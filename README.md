@@ -45,7 +45,7 @@ int main() {
     memserial::print( std::cout, bytes );
 }
 ```
-###Output
+### Output
 ```
 Article: 
    string[8]: "Article1"
