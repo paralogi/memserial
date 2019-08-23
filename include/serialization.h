@@ -19,6 +19,9 @@
 namespace memserial {
 
 /**
+ * The serialization method of structured data.
+ * Returns a sequence of bytes represented by the original structure.
+ *
  * Метод сериализации структурированных данных.
  * Возвращает последовательность байт, представленных исходной структурой.
  */
@@ -26,6 +29,10 @@ template< typename T >
 std::string serialize( const T& value );
 
 /**
+ * Method for parsing serialized data.
+ * Returns the original data structure recovered from a set of bytes.
+ * Throws a SerialException in case of invalid data.
+ *
  * Метод разбора сериализованных данных.
  * Возвращает исходную структуру данных, восстановленную из набора байт.
  * Выбрасывает исключение "SerialException" в случае некорректных данных.
@@ -34,6 +41,9 @@ template< typename T >
 T parse( const std::string& bytes );
 
 /**
+ * Overridden method for parsing a pointer to an array of bytes.
+ * Throws a SerialException in case of invalid data.
+ *
  * Переопределенный метод для разбора указателя на массив байт.
  * Выбрасывает исключение "SerialException" в случае некорректных данных.
  */
@@ -41,49 +51,68 @@ template< typename T >
 T parse( const char* bytes, std::size_t size );
 
 /**
- * Возвращает идентификатор для сериализуемого типа.
+ * Returns identifier of the serializable type.
+ *
+ * Возвращает идентификатор сериализуемого типа.
  */
 template< typename T >
 uint64_t ident();
 
 /**
- * Переопределенный метод для получения идентификатора по имени типа.
+ * Overridden method returns identifier by type alias.
+ * In case the name is not found, will return size_t( -1 ).
+ *
+ * Переопределенный метод возвращает идентификатор по имени типа.
  * В случае, если имя не найдено, вернет size_t( -1 ).
  */
 uint64_t ident( const std::string& name );
 
 /**
+ * Overridden method returns identifier by string name.
+ * In case the name is not found, will return size_t( -1 ).
+ *
  * Переопределенный метод возвращает идентификатор по строковому имени.
  * В случае, если имя не найдено, вернет size_t( -1 ).
  */
 uint64_t ident( const char* name, std::size_t size );
 
 /**
+ * Returns the readable name for the serializable type.
+ *
  * Возвращает читаемое имя для сериализуемого типа.
  */
 template< typename T >
 std::string alias();
 
 /**
- * Переопределенный метод для получения имени по идентификатору типа.
+ * Overridden method returns name by type identifier.
+ * In case the identifier is not found, will return an empty string.
+ *
+ * Переопределенный метод возвращает имя по идентификатору типа.
  * В случае, если идентификатор не найден, вернет пустую строку.
  */
 std::string alias( uint64_t ident );
 
 /**
- * Метод для вывода структурированных данных в человекочитаемом формате.
+ * Prints structured data in a human-readable format.
+ *
+ * Выводит структурированные данные в человекочитаемом формате.
  */
 template< typename Stream, typename T >
 void print( Stream&& stream, const T& value );
 
 /**
- * Переопределенный метод для вывода данных по идентификатору типа.
+ * Overridden method prints data by type identifier.
+ *
+ * Переопределенный метод выводит данные по идентификатору типа.
  */
 template< typename Stream >
 bool print( Stream&& stream, const std::string& bytes, uint64_t ident );
 
 /**
- * Переопределенный метод для вывода данных без информации о типе.
+ * The overridden method prints data without type information.
+ *
+ * Переопределенный метод выводит данные без информации о типе.
  */
 template< typename Stream >
 bool print( Stream&& stream, const std::string& bytes );

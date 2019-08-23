@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация массивов определенной длины.
+ *
  */
 template< typename Arg, std::size_t Dim >
 struct SerialHelpers< array< Arg, Dim > > {

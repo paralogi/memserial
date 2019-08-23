@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация нулевого типа.
+ *
  */
 template< typename T >
 struct SerialHelpers< nulltype_t< T > > {

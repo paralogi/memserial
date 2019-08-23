@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация векторных типов.
+ *
  */
 template< typename ... Args >
 struct SerialHelpers< vector< Args... > > {

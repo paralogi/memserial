@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация последовательности бит.
+ *
  */
 template< std::size_t Bits >
 struct SerialHelpers< bitset< Bits > > {

@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация класса времени.
+ *
  */
 template< typename ... Args >
 struct SerialHelpers< duration< Args... > > {

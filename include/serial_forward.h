@@ -31,6 +31,9 @@
 #include "boost/pfr/precise/core.hpp"
 
 /**
+ * Maximum nesting level for serializable types, default is 16.
+ * Prevents looping in case of recursive structures.
+ *
  * Максимальное значение вложенности для сериализуемых типов, по умолчанию 16.
  * Предотвращает зацикливание в случае рекурсивных структур.
  */
@@ -53,7 +56,9 @@
 #include "detail/serial_default.h"
 
 /**
- * Макросы для чтение значения счетчика времени компиляции.
+ * Macro for reading compile time counter values.
+ *
+ * Макросы для чтения значения счетчика времени компиляции.
  */
 #define COUNTER_READ_BASE( Tag, Base, Tail ) \
 counterReminder( Tag{}, size_t_< Base >(), size_t_< Tail >() )
@@ -70,7 +75,13 @@ COUNTER_READ_BASE( Tag, 128, \
 COUNTER_READ_BASE( Tag, 256, \
 COUNTER_READ_BASE( Tag, 512, \
 COUNTER_READ_BASE( Tag, 1024, \
-        0 ) ) ) ) ) ) ) ) ) ) )
+COUNTER_READ_BASE( Tag, 2048, \
+COUNTER_READ_BASE( Tag, 4096, \
+COUNTER_READ_BASE( Tag, 8192, \
+COUNTER_READ_BASE( Tag, 16384, \
+COUNTER_READ_BASE( Tag, 32768, \
+COUNTER_READ_BASE( Tag, 65536, \
+                0 )))))))))))))))))
 
 #define COUNTER_INC( Tag ) \
 constexpr size_t_< COUNTER_READ( Tag ) + 1 > \
@@ -80,7 +91,9 @@ counterReminder( Tag&&, \
         { return {}; }
 
 /**
- * Макрос объявляет информацию о типе для сериализации.
+ * Macro declares information about serializable type
+ *
+ * Макрос объявляет информацию о сериализуемом типе.
  */
 #define ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
 namespace memserial { \
@@ -150,10 +163,13 @@ struct SerialMetatype< Type< Arg0, Arg1 > > { \
 }}
 
 /**
- * Макрос включает поддержку сериализации сообщений по идентификатору.
+ * Macro enables support for serialization methods.
+ *
+ * Макрос включает поддержку методов сериализации.
  */
 #ifdef USE_QT
 #define ENABLE_SERIAL_TYPE_INFO( Type ) \
+ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
 namespace memserial { \
 template std::string serialize< Type >( const Type& ); \
 template Type parse< Type >( const std::string& ); \
@@ -164,21 +180,10 @@ template void print< std::ostream&, Type >( std::ostream&, const Type& ); \
 template void print< std::ostream, Type >( std::ostream&&, const Type& ); \
 template void print< QDebug&, Type >( QDebug&, const Type& ); \
 template void print< QDebug, Type >( QDebug&&, const Type& ); \
-namespace detail { \
-COUNTER_INC( SerialCounter ) \
-template<> \
-struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
-    static Type value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
-}; \
-template<> \
-struct SerialMetatype< Type > { \
-    static constexpr uint64_t ident() { return COUNTER_READ( SerialCounter ); } \
-    static constexpr string_view alias() { return #Type; } \
-}; \
-}}
+}
 #else
 #define ENABLE_SERIAL_TYPE_INFO( Type ) \
+ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
 namespace memserial { \
 template std::string serialize< Type >( const Type& ); \
 template Type parse< Type >( const std::string& ); \
@@ -187,20 +192,9 @@ template uint64_t ident< Type >(); \
 template std::string alias< Type >(); \
 template void print< std::ostream&, Type >( std::ostream&, const Type& ); \
 template void print< std::ostream, Type >( std::ostream&&, const Type& ); \
-namespace detail { \
-COUNTER_INC( SerialCounter ) \
-template<> \
-struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
-    static Type value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
-}; \
-template<> \
-struct SerialMetatype< Type > { \
-    static constexpr uint64_t ident() { return COUNTER_READ( SerialCounter ); } \
-    static constexpr string_view alias() { return #Type; } \
-}; \
-}}
+}
 #endif
+
 
 ENABLE_SERIAL_TYPE_SIMPLE( bool )
 ENABLE_SERIAL_TYPE_SIMPLE( unsigned char )

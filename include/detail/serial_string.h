@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Специализация строковых типов.
+ *
  */
 template< typename ... Args >
 struct SerialHelpers< basic_string< Args... > > {

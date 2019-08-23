@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Простым типом назовем любой скалярный тип или их объединение.
+ *
  */
 template< typename T >
 struct SerialHelpers< primitive_t< T > > {

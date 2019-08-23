@@ -18,7 +18,7 @@ namespace memserial {
 namespace detail {
 
 /**
- * Составным типом назовем все типы классов или массивы определенной длины.
+ *
  */
 template< typename T >
 struct SerialHelpers< aggregate_t< T > > {

@@ -21,8 +21,4 @@ target_include_directories( memserial PUBLIC
 
 target_include_directories( memserial PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src )
-
-add_executable( testmemserial src/main.cpp )
-target_link_libraries( testmemserial PUBLIC memserial )
-
     
