@@ -1,22 +1,32 @@
 # memserial
-C++ template serialization library for "aggregate types".
+Library contains serialization methods that can be used in conjunction with user defined types.
+
 Based on [magic_get](https://github.com/apolukhin/magic_get.git) library.
 
-### Features
-To enable serialization support for new messages a special macro 'ENABLE_SERIAL_TYPE_INFO( Type )', 
-which takes the type of original message as a parameter.
+### Description
+To enable serialization support for new data types use macro `ENABLE_SERIAL_TYPE_INFO( Type )`.
+This macro provides information to generate an optimal serialization plan for the source type.
 
-Message is an aggregate data type with the exception of empty structures, "union" types, and references. 
-By the way, any arithmetic type or array is also aggregate, and therefore can act as a message type.
+Serialized message is a raw sequence of bytes and includes header and data sections. 
+The header is an 8-byte hash that is unique identifier for each registered type.
+Hash is calculated according to type structure, the order and byte size of the internal fields, and the unique number provided during registration.
+It is used to check operating systems compatibility requirements and message types of exchange protocol.
 
-### Restrictions:
-* The structure as a whole and its fields should not have explicitly specified alignment, 
-this also applies for attributes like '[[gnu::packed]]'.
+Current implementation is compatible with data types from standard library:
+* `std::array`
+* `std::bitset`
+* `std::chrono`
+* `std::string`
+* `std::vector`
 
-* Structure fields may only include previously mentioned data types, 
-including other registered message types.
+The only requirement is compiler with c++14 support. 
 
-* For structure fields with an undefined size, you can use 'std::string' and 'std::vector'.
+### Restrictions
+* Serializable type is a structured data type that meets aggregate initialization requirements, with the exception of empty structures, union types, and references. 
+
+* Structure fields may only include previously mentioned data types, including other serializable types.
+
+* The structure as a whole and its fields should not have explicit alignment, this also applies to attributes like `[[gnu::packed]]`.
 
 ### Example
 ```c++
@@ -35,7 +45,7 @@ int main() {
     memserial::print( std::cout, bytes );
 }
 ```
-Outputs:
+###Output
 ```
 Article: 
    string[8]: "Article1"
