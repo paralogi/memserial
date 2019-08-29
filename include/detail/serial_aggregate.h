@@ -20,6 +20,154 @@ namespace detail {
 /**
  *
  */
+struct TypeHashFunctor {
+    uint64_t& m_seed;
+    uint32_t m_nesting;
+
+    TypeHashFunctor( uint64_t& seed, uint32_t nesting ) :
+            m_seed( seed ),
+            m_nesting( nesting ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        hashCombine( m_seed, SerialHelpers< T >::typeHash( m_nesting ) );
+    }
+};
+
+/**
+ *
+ */
+struct ByteSizeFunctor {
+    std::size_t& m_byte_size;
+
+    ByteSizeFunctor( std::size_t& byte_size ) :
+            m_byte_size( byte_size ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        m_byte_size += SerialHelpers< T >::byteSize( field );
+    }
+};
+
+/**
+ *
+ */
+template< typename Iterator >
+struct ToBytesFunctor {
+    Iterator& m_begin;
+    Iterator& m_end;
+
+    ToBytesFunctor( Iterator& begin, Iterator& end ) :
+            m_begin( begin ),
+            m_end( end ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        SerialHelpers< T >::toBytes( field, m_begin, m_end );
+    }
+};
+
+/**
+ *
+ */
+template< typename Iterator >
+struct FromBytesFunctor {
+    Iterator& m_begin;
+    Iterator& m_end;
+
+    FromBytesFunctor( Iterator& begin, Iterator& end ) :
+            m_begin( begin ),
+            m_end( end ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        SerialHelpers< T >::fromBytes( field, m_begin, m_end );
+    }
+};
+
+/**
+ *
+ */
+template< typename Stream >
+struct ToDebugFunctor {
+    Stream& m_stream;
+    std::string m_separator;
+    uint8_t m_level;
+
+    ToDebugFunctor( Stream& stream, std::string&& separator, uint8_t level ) :
+            m_stream( stream ),
+            m_separator( std::forward< std::string >( separator ) ),
+            m_level( level ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        m_stream << m_separator.c_str();
+        if ( is_primitive< T >::value )
+            m_stream << SerialMetatype< T >::alias().data << ": ";
+        SerialHelpers< T >::toDebug( field, m_stream, m_level + 1 );
+    }
+};
+
+#ifdef OPTIMAL_LIBRARY_SIZE
+struct AggregateFunctor {
+    template< typename T > struct FunctorType;
+    template< uint8_t N > using IntegralType = std::integral_constant< uint8_t, N >;
+
+    enum {
+        TypeHash,
+        ByteSize,
+        ToBytes,
+        FromBytes,
+        ToOStream,
+        ToQDebug,
+    };
+
+    uint8_t m_type;
+    void* m_functor;
+
+    template< typename T >
+    AggregateFunctor( T& functor ) :
+            m_type( FunctorType< T >::value ),
+            m_functor( &functor ) {
+    }
+
+    template< typename T >
+    void operator()( T& field ) {
+        if ( m_type == TypeHash )
+            ( *reinterpret_cast< TypeHashFunctor* >( m_functor ) )( field );
+        else if ( m_type == ByteSize )
+            ( *reinterpret_cast< ByteSizeFunctor* >( m_functor ) )( field );
+        else if ( m_type == ToBytes )
+            ( *reinterpret_cast< ToBytesFunctor< std::string::iterator >* >( m_functor ) )( field );
+        else if ( m_type == FromBytes )
+            ( *reinterpret_cast< FromBytesFunctor< const char* >* >( m_functor ) )( field );
+        else if ( m_type == ToOStream )
+            ( *reinterpret_cast< ToDebugFunctor< std::ostream >* >( m_functor ) )( field );
+#ifdef USE_QT
+        else if ( m_type == ToQDebug )
+            ( *reinterpret_cast< ToDebugFunctor< QDebug >* >( m_functor ) )( field );
+#endif
+    }
+};
+
+template<> struct AggregateFunctor::FunctorType< TypeHashFunctor > : IntegralType< TypeHash > {};
+template<> struct AggregateFunctor::FunctorType< ByteSizeFunctor > : IntegralType< ByteSize > {};
+template<> struct AggregateFunctor::FunctorType< ToBytesFunctor< std::string::iterator > > : IntegralType< ToBytes > {};
+template<> struct AggregateFunctor::FunctorType< FromBytesFunctor< const char* > > : IntegralType< FromBytes > {};
+template<> struct AggregateFunctor::FunctorType< ToDebugFunctor< std::ostream > > : IntegralType< ToOStream > {};
+#ifdef USE_QT
+template<> struct AggregateFunctor::FunctorType< ToDebugFunctor< QDebug > > : IntegralType< ToQDebug > {};
+#endif
+#endif
+
+/**
+ *
+ */
 template< typename T >
 struct SerialHelpers< aggregate_t< T > > {
     using ValueType = aggregate_t< T >;
@@ -33,13 +181,14 @@ struct SerialHelpers< aggregate_t< T > > {
         if ( nesting-- <= 0 )
             return seed;
 
-        boost::pfr::for_each_field( ValueType{},
-                [ &seed, nesting ]( auto&& field ) {
-                    using FieldTypeCv = typename std::remove_reference< decltype( field ) >::type;
-                    using FieldType = typename std::remove_cv< FieldTypeCv >::type;
-                    hashCombine( seed, SerialHelpers< FieldType >::typeHash( nesting ) );
-                } );
+        ValueType value;
+        TypeHashFunctor functor( seed, nesting );
 
+#ifdef OPTIMAL_LIBRARY_SIZE
+        boost::pfr::for_each_field( value, AggregateFunctor( functor ) );
+#else
+        boost::pfr::for_each_field( value, std::move( functor ) );
+#endif
         return seed;
     }
 
@@ -49,14 +198,14 @@ struct SerialHelpers< aggregate_t< T > > {
     static std::size_t byteSize( const ValueType& value ) {
 
         std::size_t byte_size = 0;
+        ValueType& value_ref = const_cast< ValueType& >( value );
+        ByteSizeFunctor functor( byte_size );
 
-        boost::pfr::for_each_field( const_cast< ValueType& >( value ),
-                [ &byte_size ]( auto&& field ) {
-                    using FieldTypeCv = typename std::remove_reference< decltype( field ) >::type;
-                    using FieldType = typename std::remove_cv< FieldTypeCv >::type;
-                    byte_size += SerialHelpers< FieldType >::byteSize( field );
-                } );
-
+#ifdef OPTIMAL_LIBRARY_SIZE
+        boost::pfr::for_each_field( value_ref, AggregateFunctor( functor ) );
+#else
+        boost::pfr::for_each_field( value_ref, std::move( functor ) );
+#endif
         return byte_size;
     }
 
@@ -66,12 +215,15 @@ struct SerialHelpers< aggregate_t< T > > {
     template< typename Iterator >
     static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
 
-        boost::pfr::for_each_field( const_cast< ValueType& >( value ),
-                [ &begin, &end ]( auto&& field ) {
-                    using FieldTypeCv = typename std::remove_reference< decltype( field ) >::type;
-                    using FieldType = typename std::remove_cv< FieldTypeCv >::type;
-                    SerialHelpers< FieldType >::toBytes( field, begin, end );
-                } );
+        using IteratorType = typename std::remove_reference< Iterator >::type;
+        ValueType& value_ref = const_cast< ValueType& >( value );
+        ToBytesFunctor< IteratorType > functor( begin, end );
+
+#ifdef OPTIMAL_LIBRARY_SIZE
+        boost::pfr::for_each_field( value_ref, AggregateFunctor( functor ) );
+#else
+        boost::pfr::for_each_field( value_ref, std::move( functor ) );
+#endif
     }
 
     /**
@@ -80,12 +232,14 @@ struct SerialHelpers< aggregate_t< T > > {
     template< typename Iterator >
     static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
 
-        boost::pfr::for_each_field( value,
-                [ &begin, &end ]( auto&& field ) {
-                    using FieldTypeCv = typename std::remove_reference< decltype( field ) >::type;
-                    using FieldType = typename std::remove_cv< FieldTypeCv >::type;
-                    SerialHelpers< FieldType >::fromBytes( field, begin, end );
-                } );
+        using IteratorType = typename std::remove_reference< Iterator >::type;
+        FromBytesFunctor< IteratorType > functor( begin, end );
+
+#ifdef OPTIMAL_LIBRARY_SIZE
+        boost::pfr::for_each_field( value, AggregateFunctor( functor ) );
+#else
+        boost::pfr::for_each_field( value, std::move( functor ) );
+#endif
     }
 
     /**
@@ -104,15 +258,15 @@ struct SerialHelpers< aggregate_t< T > > {
         std::string separator( 3 * ( level + 1 ) + 1, ' ' );
         separator[ 0 ] = '\n';
 
-        boost::pfr::for_each_field( const_cast< ValueType& >( value ),
-                [ &stream, &separator, level ]( auto&& field, std::size_t index ) {
-                    using FieldTypeCv = typename std::remove_reference< decltype( field ) >::type;
-                    using FieldType = typename std::remove_cv< FieldTypeCv >::type;
-                    stream << separator.c_str();
-                    if ( is_primitive< FieldType >::value )
-                        stream << SerialMetatype< FieldType >::alias().data << ": ";
-                    SerialHelpers< FieldType >::toDebug( field, stream, level + 1 );
-                } );
+        using StreamType = typename std::remove_reference< Stream >::type;
+        ValueType& value_ref = const_cast< ValueType& >( value );
+        ToDebugFunctor< StreamType > functor( stream, std::move( separator ), level );
+
+#ifdef OPTIMAL_LIBRARY_SIZE
+        boost::pfr::for_each_field( value_ref, AggregateFunctor( functor ) );
+#else
+        boost::pfr::for_each_field( value_ref, std::move( functor ) );
+#endif
     }
 };
 

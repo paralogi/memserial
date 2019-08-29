@@ -15,6 +15,77 @@
 #pragma once
 
 namespace memserial {
+namespace detail {
+
+/**
+ *
+ */
+struct IdentFunctor {
+    uint64_t& m_id;
+    const char* m_name;
+    std::size_t m_size;
+
+    IdentFunctor( uint64_t& id, const char* name, std::size_t size ) :
+            m_id( id ),
+            m_name( name ),
+            m_size( size ) {
+    }
+
+    template< typename T >
+    bool operator()( T& value ) {
+        if ( !SerialMetatype< T >::alias().equal( m_name, m_size ) )
+            return false;
+        m_id = SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX );
+        return true;
+    }
+};
+
+/**
+ *
+ */
+struct AliasFunctor {
+    std::string& m_name;
+    uint64_t m_ident;
+
+    AliasFunctor( std::string& name, uint64_t ident ) :
+            m_name( name ),
+            m_ident( ident ) {
+    }
+
+    template< typename T >
+    bool operator()( T& value ) {
+        if ( SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX ) != m_ident )
+            return false;
+        m_name = SerialMetatype< T >::alias().string();
+        return true;
+    }
+};
+
+/**
+ *
+ */
+template< typename Stream >
+struct PrintFunctor {
+    Stream& m_stream;
+    const std::string& m_bytes;
+    uint64_t m_ident;
+
+    PrintFunctor( Stream& stream, const std::string& bytes, uint64_t ident ) :
+            m_stream( stream ),
+            m_bytes( bytes ),
+            m_ident( ident ) {
+    }
+
+    template< typename T >
+    bool operator()( T& value ) {
+        if ( SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX ) != m_ident )
+            return false;
+        print( m_stream, parse< T >( m_bytes ) );
+        return true;
+    }
+};
+
+} // --- namespace
 
 /**
  *
@@ -98,15 +169,8 @@ uint64_t ident( const char* name, std::size_t size ) {
 
     using namespace detail;
     uint64_t id = -1;
-
-    searchSerial( [ &id, name, size ]( auto&& value ) -> bool {
-        using ValueType = typename std::remove_reference< decltype( value ) >::type;
-        if ( !SerialMetatype< ValueType >::alias().equal( name, size ) )
-            return false;
-        id = SerialHelpers< ValueType >::typeHash( SERIAL_NESTING_MAX );
-        return true;
-    } );
-
+    IdentFunctor functor( id, name, size );
+    searchSerial( std::move( functor ) );
     return id;
 }
 
@@ -126,16 +190,8 @@ std::string alias( uint64_t ident ) {
 
     using namespace detail;
     std::string name;
-
-    searchSerial(
-            [ &name, ident ]( auto&& value ) -> bool {
-                using ValueType = typename std::remove_reference< decltype( value ) >::type;
-                if ( SerialHelpers< ValueType >::typeHash( SERIAL_NESTING_MAX ) != ident )
-                    return false;
-                name = SerialMetatype< ValueType >::alias().string();
-                return true;
-            } );
-
+    AliasFunctor functor( name, ident );
+    searchSerial( std::move( functor ) );
     return name;
 }
 
@@ -154,20 +210,15 @@ void print( Stream&& stream, const T& value ) {
 template< typename Stream >
 bool print( Stream&& stream, const std::string& bytes, uint64_t ident ) {
 
-    using namespace detail;
-    return searchSerial(
-            [ &stream, &bytes, ident ]( auto&& value ) -> bool {
-                using ValueType = typename std::remove_reference< decltype( value ) >::type;
-                if ( SerialHelpers< ValueType >::typeHash( SERIAL_NESTING_MAX ) != ident )
-                    return false;
-                try {
-                    print( stream, parse< ValueType >( bytes ) );
-                }
-                catch ( const SerialException& ) {
-                    return false;
-                }
-                return true;
-            } );
+    try {
+        using namespace detail;
+        using StreamType = typename std::remove_reference< Stream >::type;
+        PrintFunctor< StreamType > functor( stream, bytes, ident );
+        return searchSerial( std::move( functor ) );
+    }
+    catch ( const SerialException& ) {
+        return false;
+    }
 }
 
 /**
@@ -176,17 +227,15 @@ bool print( Stream&& stream, const std::string& bytes, uint64_t ident ) {
 template< typename Stream >
 bool print( Stream&& stream, const std::string& bytes ) {
 
-    return detail::searchSerial(
-            [ &stream, &bytes ]( auto&& value ) -> bool {
-                using ValueType = typename std::remove_reference< decltype( value ) >::type;
-                try {
-                    print( stream, parse< ValueType >( bytes ) );
-                }
-                catch ( const SerialException& ) {
-                    return false;
-                }
-                return true;
-            } );
+    using namespace detail;
+    using HashType = uint64_t;
+
+    auto begin = bytes.data();
+    auto end = begin + sizeof( HashType );
+    HashType ident;
+
+    SerialHelpers< HashType >::fromBytes( ident, begin, end );
+    return print( stream, bytes, ident );
 }
 
 using detail::nulltype;

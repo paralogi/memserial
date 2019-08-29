@@ -11,6 +11,11 @@ if( TARGET Qt5::Core )
     target_compile_definitions( memserial PUBLIC -DUSE_QT )
 endif()
 
+option( BUILD_SIZE_OPTIMIZATION "build optimized for binary size" OFF )
+if( BUILD_SIZE_OPTIMIZATION )
+    target_compile_definitions( memserial PUBLIC -DOPTIMAL_LIBRARY_SIZE )
+endif()
+
 set_target_properties( memserial PROPERTIES 
     LINKER_LANGUAGE CXX VERSION ${PROJECT_VERSION} )
    

@@ -59,12 +59,16 @@ struct SerialCounter {};
  *
  */
 template< std::size_t Index >
-struct SerialIdentity {};
+struct SerialIdentity {
+    using SerialTag = std::false_type;
+    using InternalTag = std::false_type;
+};
 
 template<>
 struct SerialIdentity< 0 > {
+    using SerialTag = std::true_type;
+    using InternalTag = std::true_type;
     static constexpr nulltype value() { return {}; }
-    static constexpr string_view alias() { return "nulltype"; }
 };
 
 /**
@@ -107,39 +111,11 @@ constexpr size_t_< Tail > counterReminder( Tag, size_t_< Base >, size_t_< Tail >
 /**
  *
  */
-template< std::size_t Index,
-        typename = decltype( SerialIdentity< Index >::alias() ) >
-constexpr uint64_t countSerial( SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
-    return Index;
-}
-
-template< std::size_t Begin, std::size_t End,
-        typename = decltype( SerialIdentity< End >::alias() ) >
-constexpr uint64_t countSerial( SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
-    return End;
-}
-
-template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(),
-        typename = decltype( SerialIdentity< Begin >::alias() ) >
-constexpr uint64_t countSerial( SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
-    constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
-    constexpr uint64_t begin = countSerial( SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} );
-    constexpr uint64_t end = countSerial( SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
-    return std::max( begin, end );
-}
-
-template< std::size_t Begin, std::size_t End >
-constexpr uint64_t countSerial( SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
-    return 0;
-}
-
-/**
- *
- */
 template< std::size_t Index, typename Func,
         typename = decltype( SerialIdentity< Index >::value() ) >
 constexpr bool invokeIfSerial( Func&& f, long ) {
-    return f( SerialIdentity< Index >::value() );
+    auto value = SerialIdentity< Index >::value();
+    return std::forward< Func >( f )( value );
 }
 
 template< std::size_t Index, typename Func >
@@ -151,13 +127,48 @@ constexpr bool invokeIfSerial( Func&&, int ) {
  *
  */
 template< std::size_t Index, typename Func,
-        typename = decltype( SerialIdentity< Index >::alias() ) >
+        typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
+bool searchSerial( Func&& f, SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
+    return invokeIfSerial< Index >( std::forward< Func >( f ), 1L );
+}
+
+template< std::size_t Begin, std::size_t End, typename Func,
+        typename = typename std::enable_if< SerialIdentity< End >::InternalTag::value >::type >
+bool searchSerial( Func&& f, SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
+    return false;
+}
+
+template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(), typename Func,
+        typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
+bool searchSerial( Func&& f, SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
+    constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
+    if ( searchSerial( std::forward< Func >( f ), SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} ) )
+        return true;
+    return searchSerial( std::forward< Func >( f ), SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+}
+
+template< std::size_t Begin, std::size_t End, typename Func >
+bool searchSerial( Func&& f, SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
+    return false;
+}
+
+/**
+ *
+ */
+template< std::size_t Index, typename Func,
+        typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
 void foreachSerial( Func&& f, SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
     invokeIfSerial< Index >( std::forward< Func >( f ), 1L );
 }
 
+template< std::size_t Begin, std::size_t End, typename Func,
+        typename = typename std::enable_if< SerialIdentity< End >::InternalTag::value >::type >
+void foreachSerial( Func&& f, SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
+    return;
+}
+
 template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(), typename Func,
-        typename = decltype( SerialIdentity< Begin >::alias() ) >
+        typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
 void foreachSerial( Func&& f, SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
     constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
     foreachSerial( std::forward< Func >( f ), SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} );
@@ -172,24 +183,30 @@ void foreachSerial( Func&& f, SerialOuterTag, size_t_< Begin >, size_t_< End > )
 /**
  *
  */
-template< std::size_t Index, typename Func,
-        typename = decltype( SerialIdentity< Index >::alias() ) >
-bool searchSerial( Func&& f, SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
-    return invokeIfSerial< Index >( std::forward< Func >( f ), 1L );
+template< std::size_t Index,
+        typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
+constexpr uint64_t countSerial( SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
+    return Index;
 }
 
-template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(), typename Func,
-        typename = decltype( SerialIdentity< Begin >::alias() ) >
-bool searchSerial( Func&& f, SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
+template< std::size_t Begin, std::size_t End,
+        typename = typename std::enable_if< SerialIdentity< End >::SerialTag::value >::type >
+constexpr uint64_t countSerial( SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
+    return End;
+}
+
+template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(),
+        typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
+constexpr uint64_t countSerial( SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
     constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
-    if ( searchSerial( std::forward< Func >( f ), SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} ) )
-        return true;
-    return searchSerial( std::forward< Func >( f ), SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+    constexpr uint64_t begin = countSerial( SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} );
+    constexpr uint64_t end = countSerial( SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+    return std::max( begin, end );
 }
 
-template< std::size_t Begin, std::size_t End, typename Func >
-bool searchSerial( Func&& f, SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
-    return false;
+template< std::size_t Begin, std::size_t End >
+constexpr uint64_t countSerial( SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
+    return 0;
 }
 
 /**

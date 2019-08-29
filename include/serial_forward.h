@@ -95,14 +95,15 @@ counterReminder( Tag&&, \
  *
  * Макрос объявляет информацию о сериализуемом типе.
  */
-#define ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
+#define ENABLE_SERIAL_TYPE_SIMPLE( Type, Internal ) \
 namespace memserial { \
 namespace detail { \
 COUNTER_INC( SerialCounter ) \
 template<> \
 struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
+    using SerialTag = std::true_type; \
+    using InternalTag = std::integral_constant< bool, Internal >; \
     static Type value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
 }; \
 template<> \
 struct SerialMetatype< Type > { \
@@ -111,15 +112,16 @@ struct SerialMetatype< Type > { \
 }; \
 }}
 
-#define ENABLE_SERIAL_TYPE_TEMPLATE( Type ) \
+#define ENABLE_SERIAL_TYPE_TEMPLATE( Type, Internal ) \
 namespace memserial { \
 namespace detail { \
 COUNTER_INC( SerialCounter ) \
 template<> \
 struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
+    using SerialTag = std::true_type; \
+    using InternalTag = std::integral_constant< bool, Internal >; \
     template< typename... Args > \
     static Type< Args... > value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
 }; \
 template< typename... Args > \
 struct SerialMetatype< Type< Args... > > { \
@@ -128,15 +130,16 @@ struct SerialMetatype< Type< Args... > > { \
 }; \
 }}
 
-#define ENABLE_SERIAL_TYPE_TEMPLATE_ARG1( Type, ArgType0 ) \
+#define ENABLE_SERIAL_TYPE_TEMPLATE_ARG1( Type, Internal, ArgType0 ) \
 namespace memserial { \
 namespace detail { \
 COUNTER_INC( SerialCounter ) \
 template<> \
 struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
+    using SerialTag = std::true_type; \
+    using InternalTag = std::integral_constant< bool, Internal >; \
     template< ArgType0 Arg > \
     static Type< Arg > value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
 }; \
 template< ArgType0 Arg > \
 struct SerialMetatype< Type< Arg > > { \
@@ -145,15 +148,16 @@ struct SerialMetatype< Type< Arg > > { \
 }; \
 }}
 
-#define ENABLE_SERIAL_TYPE_TEMPLATE_ARG2( Type, ArgType0, ArgType1 ) \
+#define ENABLE_SERIAL_TYPE_TEMPLATE_ARG2( Type, Internal, ArgType0, ArgType1 ) \
 namespace memserial { \
 namespace detail { \
 COUNTER_INC( SerialCounter ) \
 template<> \
 struct SerialIdentity< COUNTER_READ( SerialCounter ) > { \
+    using SerialTag = std::true_type; \
+    using InternalTag = std::integral_constant< bool, Internal >; \
     template< ArgType0 Arg0, ArgType1 Arg1 > \
     static Type< Arg0, Arg1 > value() { return {}; } \
-    static constexpr string_view alias() { return #Type; } \
 }; \
 template< ArgType0 Arg0, ArgType1 Arg1 > \
 struct SerialMetatype< Type< Arg0, Arg1 > > { \
@@ -169,7 +173,7 @@ struct SerialMetatype< Type< Arg0, Arg1 > > { \
  */
 #ifdef USE_QT
 #define ENABLE_SERIAL_TYPE_INFO( Type ) \
-ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
+ENABLE_SERIAL_TYPE_SIMPLE( Type, false ) \
 namespace memserial { \
 template std::string serialize< Type >( const Type& ); \
 template Type parse< Type >( const std::string& ); \
@@ -183,7 +187,7 @@ template void print< QDebug, Type >( QDebug&&, const Type& ); \
 }
 #else
 #define ENABLE_SERIAL_TYPE_INFO( Type ) \
-ENABLE_SERIAL_TYPE_SIMPLE( Type ) \
+ENABLE_SERIAL_TYPE_SIMPLE( Type, false ) \
 namespace memserial { \
 template std::string serialize< Type >( const Type& ); \
 template Type parse< Type >( const std::string& ); \
@@ -195,43 +199,42 @@ template void print< std::ostream, Type >( std::ostream&&, const Type& ); \
 }
 #endif
 
+ENABLE_SERIAL_TYPE_SIMPLE( bool, true )
+ENABLE_SERIAL_TYPE_SIMPLE( unsigned char, true )
+ENABLE_SERIAL_TYPE_SIMPLE( unsigned short, true )
+ENABLE_SERIAL_TYPE_SIMPLE( unsigned int, true )
+ENABLE_SERIAL_TYPE_SIMPLE( unsigned long, true )
+ENABLE_SERIAL_TYPE_SIMPLE( unsigned long long, true )
+ENABLE_SERIAL_TYPE_SIMPLE( signed char, true )
+ENABLE_SERIAL_TYPE_SIMPLE( short, true )
+ENABLE_SERIAL_TYPE_SIMPLE( int, true )
+ENABLE_SERIAL_TYPE_SIMPLE( long, true )
+ENABLE_SERIAL_TYPE_SIMPLE( long long, true )
+ENABLE_SERIAL_TYPE_SIMPLE( char, true )
+ENABLE_SERIAL_TYPE_SIMPLE( wchar_t, true )
+ENABLE_SERIAL_TYPE_SIMPLE( char16_t, true )
+ENABLE_SERIAL_TYPE_SIMPLE( char32_t, true )
+ENABLE_SERIAL_TYPE_SIMPLE( float, true )
+ENABLE_SERIAL_TYPE_SIMPLE( double, true )
+ENABLE_SERIAL_TYPE_SIMPLE( long double, true )
 
-ENABLE_SERIAL_TYPE_SIMPLE( bool )
-ENABLE_SERIAL_TYPE_SIMPLE( unsigned char )
-ENABLE_SERIAL_TYPE_SIMPLE( unsigned short )
-ENABLE_SERIAL_TYPE_SIMPLE( unsigned int )
-ENABLE_SERIAL_TYPE_SIMPLE( unsigned long )
-ENABLE_SERIAL_TYPE_SIMPLE( unsigned long long )
-ENABLE_SERIAL_TYPE_SIMPLE( signed char )
-ENABLE_SERIAL_TYPE_SIMPLE( short )
-ENABLE_SERIAL_TYPE_SIMPLE( int )
-ENABLE_SERIAL_TYPE_SIMPLE( long )
-ENABLE_SERIAL_TYPE_SIMPLE( long long )
-ENABLE_SERIAL_TYPE_SIMPLE( char )
-ENABLE_SERIAL_TYPE_SIMPLE( wchar_t )
-ENABLE_SERIAL_TYPE_SIMPLE( char16_t )
-ENABLE_SERIAL_TYPE_SIMPLE( char32_t )
-ENABLE_SERIAL_TYPE_SIMPLE( float )
-ENABLE_SERIAL_TYPE_SIMPLE( double )
-ENABLE_SERIAL_TYPE_SIMPLE( long double )
+ENABLE_SERIAL_TYPE_SIMPLE( string, true )
+ENABLE_SERIAL_TYPE_SIMPLE( wstring, true )
+ENABLE_SERIAL_TYPE_SIMPLE( u16string, true )
+ENABLE_SERIAL_TYPE_SIMPLE( u32string, true )
+ENABLE_SERIAL_TYPE_TEMPLATE( basic_string, true )
 
-ENABLE_SERIAL_TYPE_SIMPLE( string )
-ENABLE_SERIAL_TYPE_SIMPLE( wstring )
-ENABLE_SERIAL_TYPE_SIMPLE( u16string )
-ENABLE_SERIAL_TYPE_SIMPLE( u32string )
-ENABLE_SERIAL_TYPE_TEMPLATE( basic_string )
+ENABLE_SERIAL_TYPE_TEMPLATE( vector, true )
+ENABLE_SERIAL_TYPE_TEMPLATE_ARG2( array, true, typename, std::size_t )
+ENABLE_SERIAL_TYPE_TEMPLATE_ARG1( bitset, true, std::size_t )
 
-ENABLE_SERIAL_TYPE_TEMPLATE( vector )
-ENABLE_SERIAL_TYPE_TEMPLATE_ARG2( array, typename, std::size_t )
-ENABLE_SERIAL_TYPE_TEMPLATE_ARG1( bitset, std::size_t )
-
-ENABLE_SERIAL_TYPE_SIMPLE( system_clock )
-ENABLE_SERIAL_TYPE_SIMPLE( steady_clock )
-ENABLE_SERIAL_TYPE_SIMPLE( nanoseconds )
-ENABLE_SERIAL_TYPE_SIMPLE( microseconds )
-ENABLE_SERIAL_TYPE_SIMPLE( milliseconds )
-ENABLE_SERIAL_TYPE_SIMPLE( seconds )
-ENABLE_SERIAL_TYPE_SIMPLE( minutes )
-ENABLE_SERIAL_TYPE_SIMPLE( hours )
-ENABLE_SERIAL_TYPE_TEMPLATE( time_point )
-ENABLE_SERIAL_TYPE_TEMPLATE( duration )
+ENABLE_SERIAL_TYPE_SIMPLE( system_clock, true )
+ENABLE_SERIAL_TYPE_SIMPLE( steady_clock, true )
+ENABLE_SERIAL_TYPE_SIMPLE( nanoseconds, true )
+ENABLE_SERIAL_TYPE_SIMPLE( microseconds, true )
+ENABLE_SERIAL_TYPE_SIMPLE( milliseconds, true )
+ENABLE_SERIAL_TYPE_SIMPLE( seconds, true )
+ENABLE_SERIAL_TYPE_SIMPLE( minutes, true )
+ENABLE_SERIAL_TYPE_SIMPLE( hours, true )
+ENABLE_SERIAL_TYPE_TEMPLATE( time_point, true )
+ENABLE_SERIAL_TYPE_TEMPLATE( duration, true )
