@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< typename ... Args >
-struct SerialHelpers< time_point< Args... > > {
+struct SerialHelpers< time_point< Args... >, std::true_type > {
     using ValueType = time_point< Args... >;
     using ClockType = typename ValueType::clock;
     using DataType = typename ValueType::duration;

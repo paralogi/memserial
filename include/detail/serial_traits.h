@@ -35,6 +35,25 @@ using seconds = std::chrono::seconds;
 using minutes = std::chrono::minutes;
 using hours = std::chrono::hours;
 
+template< typename ... Args >
+using basic_string = std::basic_string< Args... >;
+
+template< typename ... Args >
+using vector = std::vector< Args... >;
+
+template< typename Arg, std::size_t Dim >
+using array = std::array< Arg, Dim >;
+
+template< std::size_t Bits >
+using bitset = std::bitset< Bits >;
+
+template< typename ... Args >
+using time_point = std::chrono::time_point< Args... >;
+
+template< typename ... Args >
+using duration = std::chrono::duration< Args... >;
+
+
 /**
  *
  */
@@ -47,70 +66,23 @@ struct size_t_ : std::integral_constant< std::size_t, Index > {};
 template< typename T >
 struct is_supported : public std::false_type {};
 
-/**
- *
- */
-template< typename ... Args >
-using basic_string = std::basic_string< Args... >;
-
 template< typename ... Args >
 struct is_supported< basic_string< Args... > > : public std::true_type {};
-
-/**
- *
- */
-template< typename ... Args >
-using vector = std::vector< Args... >;
 
 template< typename ... Args >
 struct is_supported< vector< Args... > > : public std::true_type {};
 
-/**
- *
- */
-template< typename Arg, std::size_t Dim >
-using array = std::array< Arg, Dim >;
-
 template< typename Arg, std::size_t Dim >
 struct is_supported< array< Arg, Dim > > : public std::true_type {};
-
-/**
- *
- */
-template< std::size_t Bits >
-using bitset = std::bitset< Bits >;
 
 template< std::size_t Bits >
 struct is_supported< bitset< Bits > > : public std::true_type {};
 
-/**
- *
- */
-template< typename Clock, typename Duration >
-using time_point = std::chrono::time_point< Clock, Duration >;
-
 template< typename ... Args >
 struct is_supported< time_point< Args... > > : public std::true_type {};
 
-/**
- *
- */
-template< typename Rep, typename Period >
-using duration = std::chrono::duration< Rep, Period >;
-
 template< typename ... Args >
 struct is_supported< duration< Args... > > : public std::true_type {};
-
-/**
- *
- */
-template< typename T >
-using is_nulltype = std::integral_constant< bool,
-        std::is_null_pointer< T >::value >;
-
-template< typename T, typename = typename
-        std::enable_if< is_nulltype< T >::value, T >::type >
-using nulltype_t = T;
 
 /**
  *
@@ -120,14 +92,6 @@ using is_primitive = std::integral_constant< bool,
         std::is_arithmetic< T >::value ||
         std::is_enum< T >::value >;
 
-template< typename T, typename = typename
-        std::enable_if< std::is_enum< T >::value, T >::type >
-using enum_t = T;
-
-template< typename T, typename = typename
-        std::enable_if< is_primitive< T >::value, T >::type >
-using primitive_t = T;
-
 /**
  *
  */
@@ -135,10 +99,6 @@ template< typename T >
 using is_aggregate = std::integral_constant< bool,
         std::is_class< T >::value &&
         !is_supported< T >::value >;
-
-template< typename T, typename = typename
-        std::enable_if< is_aggregate< T >::value, T >::type >
-using aggregate_t = T;
 
 /**
  *

@@ -21,8 +21,8 @@ namespace detail {
  *
  */
 template< typename T >
-struct SerialHelpers< primitive_t< T > > {
-    using ValueType = primitive_t< T >;
+struct SerialHelpers< T, is_primitive< T > > {
+    using ValueType = T;
 
     /**
      *

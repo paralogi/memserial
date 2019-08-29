@@ -251,7 +251,7 @@ template bool print< std::ostream >( std::ostream&&, const std::string&, uint64_
 template bool print< std::ostream& >( std::ostream&, const std::string& );
 template bool print< std::ostream >( std::ostream&&, const std::string& );
 
-#ifdef USE_QT
+#ifdef QT_CORE_LIB
 template void print< QDebug&, nulltype >( QDebug&, const nulltype& );
 template void print< QDebug, nulltype >( QDebug&&, const nulltype& );
 template bool print< QDebug& >( QDebug&, const std::string&, uint64_t );

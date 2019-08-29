@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< typename ... Args >
-struct SerialHelpers< duration< Args... > > {
+struct SerialHelpers< duration< Args... >, std::true_type > {
     using ValueType = duration< Args... >;
     using PeriodType = typename ValueType::period;
     using DataType = typename ValueType::rep;

@@ -8,7 +8,6 @@ add_library( memserial SHARED src/serial_precompile.cpp )
 find_package( Qt5 QUIET COMPONENTS Core )
 if( TARGET Qt5::Core )
     target_link_libraries( memserial PUBLIC Qt5::Core )
-    target_compile_definitions( memserial PUBLIC -DUSE_QT )
 endif()
 
 option( BUILD_SIZE_OPTIMIZATION "build optimized for binary size" OFF )
@@ -26,4 +25,3 @@ target_include_directories( memserial PUBLIC
 
 target_include_directories( memserial PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src )
-    

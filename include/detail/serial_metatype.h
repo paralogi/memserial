@@ -80,13 +80,6 @@ struct SerialMetatype {
     static constexpr string_view alias() { return "undefined"; }
 };
 
-template< typename Type >
-struct SerialMetatype< enum_t< Type > > {
-    using UnderlyingType = typename std::underlying_type< Type >::type;
-    static constexpr uint64_t ident() { return SerialMetatype< UnderlyingType >::ident(); }
-    static constexpr string_view alias() { return SerialMetatype< UnderlyingType >::alias(); }
-};
-
 template<>
 struct SerialMetatype< nulltype > {
     static constexpr uint64_t ident() { return 0; }
@@ -218,7 +211,7 @@ constexpr void hashCombine( SizeT& seed, SizeT value ) {
 }
 
 template< typename Type >
-constexpr uint64_t hash() {
+uint64_t hash() {
     uint64_t seed = SerialMetatype< Type >::ident();
     hashCombine( seed, uint64_t( sizeof( Type ) ) );
     return seed;

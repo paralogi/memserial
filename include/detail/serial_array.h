@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< typename Arg, std::size_t Dim >
-struct SerialHelpers< array< Arg, Dim > > {
+struct SerialHelpers< array< Arg, Dim >, std::true_type > {
     using ValueType = array< Arg, Dim >;
     using DataType = typename ValueType::value_type;
 

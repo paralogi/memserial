@@ -20,9 +20,9 @@ namespace detail {
 /**
  *
  */
-template< typename T >
-struct SerialHelpers< nulltype_t< T > > {
-    using ValueType = nulltype_t< T >;
+template<>
+struct SerialHelpers< nulltype, std::true_type > {
+    using ValueType = nulltype;
 
     /**
      *

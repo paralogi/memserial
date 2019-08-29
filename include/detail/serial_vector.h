@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< typename ... Args >
-struct SerialHelpers< vector< Args... > > {
+struct SerialHelpers< vector< Args... >, std::true_type > {
     using ValueType = vector< Args... >;
     using SizeType = uint32_t;
     using DataType = typename ValueType::value_type;

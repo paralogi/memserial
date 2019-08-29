@@ -20,7 +20,7 @@ namespace detail {
 /**
  *
  */
-template< typename T >
+template< typename T, typename I = std::true_type >
 struct SerialHelpers {
     using ValueType = T;
 

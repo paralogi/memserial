@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< std::size_t Bits >
-struct SerialHelpers< bitset< Bits > > {
+struct SerialHelpers< bitset< Bits >, std::true_type > {
     using ValueType = bitset< Bits >;
 
     /**
@@ -39,8 +39,8 @@ struct SerialHelpers< bitset< Bits > > {
      */
     static std::size_t byteSize( const ValueType& value ) {
 
-        constexpr auto bytes_count = value.size() / __CHAR_BIT__ +
-                ( value.size() % __CHAR_BIT__ == 0 ? 0 : 1 );
+        constexpr auto bytes_count = Bits / __CHAR_BIT__ +
+                ( Bits % __CHAR_BIT__ == 0 ? 0 : 1 );
         return bytes_count;
     }
 
@@ -52,7 +52,7 @@ struct SerialHelpers< bitset< Bits > > {
 
         assert( std::ptrdiff_t( byteSize( value ) ) <= std::distance( begin, end ) );
 
-        for ( std::size_t index = 0; index < value.size(); ++index )
+        for ( std::size_t index = 0; index < Bits; ++index )
             begin[ index / __CHAR_BIT__ ] |= ( value[ index ] << ( index % __CHAR_BIT__ ) );
 
         begin += byteSize( value );
@@ -67,7 +67,7 @@ struct SerialHelpers< bitset< Bits > > {
         if ( std::ptrdiff_t( byteSize( value ) ) > std::distance( begin, end ) )
             throw SerialException( SerialException::ExcOutOfRange );
 
-        for ( std::size_t index = 0; index < value.size(); ++index )
+        for ( std::size_t index = 0; index < Bits; ++index )
             value[ index ] = ( ( begin[ index / __CHAR_BIT__ ] >> ( index % __CHAR_BIT__ ) ) & 1 );
 
         begin += byteSize( value );
@@ -80,7 +80,7 @@ struct SerialHelpers< bitset< Bits > > {
     static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
 
         stream << SerialMetatype< ValueType >::alias().data <<
-                "< " << value.size() << " >: " <<
+                "< " << Bits << " >: " <<
                 '"' << value.to_string().c_str() << '"';
     }
 };

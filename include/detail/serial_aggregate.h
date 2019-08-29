@@ -148,7 +148,7 @@ struct AggregateFunctor {
             ( *reinterpret_cast< FromBytesFunctor< const char* >* >( m_functor ) )( field );
         else if ( m_type == ToOStream )
             ( *reinterpret_cast< ToDebugFunctor< std::ostream >* >( m_functor ) )( field );
-#ifdef USE_QT
+#ifdef QT_CORE_LIB
         else if ( m_type == ToQDebug )
             ( *reinterpret_cast< ToDebugFunctor< QDebug >* >( m_functor ) )( field );
 #endif
@@ -160,7 +160,7 @@ template<> struct AggregateFunctor::FunctorType< ByteSizeFunctor > : IntegralTyp
 template<> struct AggregateFunctor::FunctorType< ToBytesFunctor< std::string::iterator > > : IntegralType< ToBytes > {};
 template<> struct AggregateFunctor::FunctorType< FromBytesFunctor< const char* > > : IntegralType< FromBytes > {};
 template<> struct AggregateFunctor::FunctorType< ToDebugFunctor< std::ostream > > : IntegralType< ToOStream > {};
-#ifdef USE_QT
+#ifdef QT_CORE_LIB
 template<> struct AggregateFunctor::FunctorType< ToDebugFunctor< QDebug > > : IntegralType< ToQDebug > {};
 #endif
 #endif
@@ -169,8 +169,8 @@ template<> struct AggregateFunctor::FunctorType< ToDebugFunctor< QDebug > > : In
  *
  */
 template< typename T >
-struct SerialHelpers< aggregate_t< T > > {
-    using ValueType = aggregate_t< T >;
+struct SerialHelpers< T, is_aggregate< T > > {
+    using ValueType = T;
 
     /**
      *

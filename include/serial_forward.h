@@ -24,7 +24,7 @@
 #include <iostream>
 #include <cassert>
 
-#ifdef USE_QT
+#ifdef QT_CORE_LIB
 #include <QDebug>
 #endif
 
@@ -171,7 +171,7 @@ struct SerialMetatype< Type< Arg0, Arg1 > > { \
  *
  * Макрос включает поддержку методов сериализации.
  */
-#ifdef USE_QT
+#ifdef QT_CORE_LIB
 #define ENABLE_SERIAL_TYPE_INFO( Type ) \
 ENABLE_SERIAL_TYPE_SIMPLE( Type, false ) \
 namespace memserial { \
