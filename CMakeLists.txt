@@ -4,24 +4,25 @@ project( MEMSERIAL VERSION 1.0.0 LANGUAGES CXX )
 set( CMAKE_CXX_STANDARD 14 )
 
 add_library( memserial SHARED src/serial_precompile.cpp )
-
+set_target_properties( memserial PROPERTIES 
+    LINKER_LANGUAGE CXX VERSION ${PROJECT_VERSION} )
+target_include_directories( memserial PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty )
+target_include_directories( memserial PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src )
+        
 find_package( Qt5 QUIET COMPONENTS Core )
 if( TARGET Qt5::Core )
     target_link_libraries( memserial PUBLIC Qt5::Core )
 endif()
-
-option( BUILD_SIZE_OPTIMIZATION "build optimized for binary size" OFF )
-if( BUILD_SIZE_OPTIMIZATION )
-    target_compile_definitions( memserial PUBLIC -DOPTIMAL_LIBRARY_SIZE )
-endif()
-
-set_target_properties( memserial PROPERTIES 
+        
+add_library( memserial_version STATIC src/serial_version.cpp )
+set_target_properties( memserial_version PROPERTIES 
     LINKER_LANGUAGE CXX VERSION ${PROJECT_VERSION} )
-   
-target_include_directories( memserial PUBLIC 
+target_include_directories( memserial_version PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/detail
-    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty )
-
-target_include_directories( memserial PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
     ${CMAKE_CURRENT_SOURCE_DIR}/src )
+    

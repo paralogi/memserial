@@ -27,9 +27,21 @@ struct SerialHelpers< nulltype, std::true_type > {
     /**
      *
      */
-    static uint64_t typeHash( uint32_t nesting ) {
+    static constexpr bool matchHash( uint64_t hash ) {
 
-        return hash< ValueType >();
+        return SERIAL_HASH_MAX == hash;
+    }
+
+    /**
+     *
+     */
+    static constexpr uint64_t typeHash() {
+
+        return SERIAL_HASH_MAX;
+    }
+
+    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+
     }
 
     /**
@@ -62,7 +74,7 @@ struct SerialHelpers< nulltype, std::true_type > {
     template< typename Stream >
     static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
 
-        stream << "nullptr";
+        stream << SerialMetatype< ValueType >::alias().data;
     }
 };
 

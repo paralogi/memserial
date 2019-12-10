@@ -17,25 +17,22 @@
 namespace memserial {
 namespace detail {
 
+extern const uint64_t SerialHashStatic;
+
 /**
  *
  */
-struct IdentFunctor {
-    uint64_t& m_id;
-    const char* m_name;
-    std::size_t m_size;
+struct MatchFunctor {
+    bool& match_result;
+    uint64_t match_hash;
+    uint64_t value_hash;
 
-    IdentFunctor( uint64_t& id, const char* name, std::size_t size ) :
-            m_id( id ),
-            m_name( name ),
-            m_size( size ) {
-    }
-
-    template< typename T >
-    bool operator()( T& value ) {
-        if ( !SerialMetatype< T >::alias().equal( m_name, m_size ) )
+    template< std::size_t Index >
+    constexpr bool operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        if ( SerialHelpers< ValueType >::typeHash() != value_hash )
             return false;
-        m_id = SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX );
+        match_result = SerialHelpers< ValueType >::matchHash( match_hash );
         return true;
     }
 };
@@ -43,20 +40,36 @@ struct IdentFunctor {
 /**
  *
  */
+template< typename ByteArray >
+struct HashFunctor {
+    uint64_t& hash;
+    const ByteArray& alias;
+
+    template< std::size_t Index >
+    constexpr bool operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        if ( !SerialMetatype< ValueType >::alias().equal( alias.data(), alias.size() ) )
+            return false;
+        SerialHelpers< ValueType >::typeHash( hash );
+        return true;
+    }
+};
+
+/**
+ *
+ */
+template< typename ByteArray >
 struct AliasFunctor {
-    std::string& m_name;
-    uint64_t m_ident;
+    ByteArray& alias;
+    uint64_t hash;
 
-    AliasFunctor( std::string& name, uint64_t ident ) :
-            m_name( name ),
-            m_ident( ident ) {
-    }
-
-    template< typename T >
-    bool operator()( T& value ) {
-        if ( SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX ) != m_ident )
+    template< std::size_t Index >
+    constexpr bool operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        if ( SerialHelpers< ValueType >::typeHash() != hash )
             return false;
-        m_name = SerialMetatype< T >::alias().string();
+        string_view type_alias = SerialMetatype< ValueType >::alias();
+        alias = type_alias.convert< ByteArray >();
         return true;
     }
 };
@@ -64,23 +77,18 @@ struct AliasFunctor {
 /**
  *
  */
-template< typename Stream >
+template< typename Stream, typename ByteArray >
 struct PrintFunctor {
-    Stream& m_stream;
-    const std::string& m_bytes;
-    uint64_t m_ident;
+    Stream& stream;
+    const ByteArray& bytes;
+    uint64_t hash;
 
-    PrintFunctor( Stream& stream, const std::string& bytes, uint64_t ident ) :
-            m_stream( stream ),
-            m_bytes( bytes ),
-            m_ident( ident ) {
-    }
-
-    template< typename T >
-    bool operator()( T& value ) {
-        if ( SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX ) != m_ident )
+    template< std::size_t Index >
+    constexpr bool operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        if ( SerialHelpers< ValueType >::typeHash() != hash )
             return false;
-        print( m_stream, parse< T >( m_bytes ) );
+        print( stream, parse< ValueType >( bytes ) );
         return true;
     }
 };
@@ -90,58 +98,74 @@ struct PrintFunctor {
 /**
  *
  */
-template< typename T >
-std::string serialize( const T& value ) {
+bool checkVersion() {
 
-    using namespace detail;
-    using HashType = uint64_t;
+    using detail::serialHash;
+    using detail::SerialHashStatic;
+    return serialHash() == SerialHashStatic;
+}
 
-    HashType hash = SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX );
-    auto size = SerialHelpers< T >::byteSize( value ) + sizeof( HashType );
+/**
+ *
+ */
+uint64_t serialVersion() {
 
-    std::string bytes;
+    using detail::serialHash;
+    return serialHash();
+}
+
+/**
+ *
+ */
+template< typename ByteArray, typename T >
+ByteArray serialize( const T& value ) {
+
+    assert( checkVersion() );
+
+    using detail::SerialHelpers;
+    using detail::size_t_;
+
+    uint64_t hash = SerialHelpers< T >::typeHash();
+    std::size_t size = SerialHelpers< T >::byteSize( value ) + sizeof( uint64_t );
+
+    ByteArray bytes;
     bytes.resize( size );
     auto begin = bytes.begin();
     auto end = bytes.end();
 
-    SerialHelpers< HashType >::toBytes( hash, begin, end );
+    SerialHelpers< uint64_t >::toBytes( hash, begin, end );
     SerialHelpers< T >::toBytes( value, begin, end );
-
     return bytes;
 }
 
 /**
  *
  */
-template< typename T >
-T parse( const std::string& bytes ) {
+template< typename T, typename ByteArray >
+T parse( const ByteArray& bytes ) {
 
-    return parse< T >( bytes.data(), bytes.size() );
-}
+    assert( checkVersion() );
 
-/**
- *
- */
-template< typename T >
-T parse( const char* bytes, std::size_t size ) {
+    using detail::SerialHelpers;
+    using detail::MatchFunctor;
+    using detail::size_t_;
 
-    using namespace detail;
-    using HashType = uint64_t;
+    uint64_t value_hash;
+    auto begin = bytes.begin();
+    auto end = bytes.end();
+    SerialHelpers< uint64_t >::fromBytes( value_hash, begin, end );
+
+    uint64_t match_hash = SerialHelpers< T >::typeHash();
+    if ( match_hash != value_hash ) {
+        bool match_result = false;
+        MatchFunctor functor{ match_result, match_hash, value_hash };
+        searchSerial( functor );
+        if ( !match_result )
+            throw SerialException( SerialException::ExcTypeMissmatch );
+    }
 
     T value;
-    auto begin = bytes;
-    auto end = bytes + size;
-    HashType hash = SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX );
-    HashType test_hash;
-
-    SerialHelpers< HashType >::fromBytes( test_hash, begin, end );
-    if ( hash != test_hash )
-        throw SerialException( SerialException::ExcTypeMissmatch );
-
     SerialHelpers< T >::fromBytes( value, begin, end );
-    if ( std::distance( begin, end ) > 0 )
-        throw SerialException( SerialException::ExcTypeMissmatch );
-
     return value;
 }
 
@@ -151,48 +175,58 @@ T parse( const char* bytes, std::size_t size ) {
 template< typename T >
 uint64_t ident() {
 
-    return detail::SerialHelpers< T >::typeHash( SERIAL_NESTING_MAX );
+    assert( checkVersion() );
+
+    using detail::SerialHelpers;
+    using detail::size_t_;
+    return SerialHelpers< T >::typeHash();
 }
 
 /**
  *
  */
-uint64_t ident( const std::string& name ) {
+template< typename ByteArray >
+uint64_t ident( const ByteArray& alias ) {
 
-    return ident( name.data(), name.size() );
+    assert( checkVersion() );
+
+    using detail::HashFunctor;
+
+    uint64_t hash = -1;
+    HashFunctor< ByteArray > functor{ hash, alias };
+    searchSerial( functor );
+    return hash;
 }
 
 /**
  *
  */
-uint64_t ident( const char* name, std::size_t size ) {
+template< typename T, typename ByteArray >
+ByteArray alias() {
 
-    using namespace detail;
-    uint64_t id = -1;
-    IdentFunctor functor( id, name, size );
-    searchSerial( std::move( functor ) );
-    return id;
+    assert( checkVersion() );
+
+    using detail::SerialMetatype;
+    using detail::string_view;
+
+    string_view alias = SerialMetatype< T >::alias();
+    return alias.convert< ByteArray >();
 }
 
 /**
  *
  */
-template< typename T >
-std::string alias() {
+template< typename ByteArray >
+ByteArray alias( uint64_t ident ) {
 
-    return detail::SerialMetatype< T >::alias().string();
-}
+    assert( checkVersion() );
 
-/**
- *
- */
-std::string alias( uint64_t ident ) {
+    using detail::AliasFunctor;
 
-    using namespace detail;
-    std::string name;
-    AliasFunctor functor( name, ident );
-    searchSerial( std::move( functor ) );
-    return name;
+    ByteArray alias;
+    AliasFunctor< ByteArray > functor{ alias, ident };
+    searchSerial( functor );
+    return alias;
 }
 
 /**
@@ -201,63 +235,65 @@ std::string alias( uint64_t ident ) {
 template< typename Stream, typename T >
 void print( Stream&& stream, const T& value ) {
 
-    detail::SerialHelpers< T >::toDebug( value, stream, 0 );
+    assert( checkVersion() );
+
+    using detail::SerialHelpers;
+    SerialHelpers< T >::toDebug( value, stream, 0 );
 }
 
 /**
  *
  */
-template< typename Stream >
-bool print( Stream&& stream, const std::string& bytes, uint64_t ident ) {
+template< typename Stream, typename ByteArray >
+void trace( Stream&& stream, const ByteArray& bytes ) {
+
+    assert( checkVersion() );
+
+    using detail::SerialHelpers;
+    using detail::PrintFunctor;
+    using StreamType = typename std::remove_reference< Stream >::type;
 
     try {
-        using namespace detail;
-        using StreamType = typename std::remove_reference< Stream >::type;
-        PrintFunctor< StreamType > functor( stream, bytes, ident );
-        return searchSerial( std::move( functor ) );
+        uint64_t hash;
+        auto begin = bytes.begin();
+        auto end = bytes.end();
+        SerialHelpers< uint64_t >::fromBytes( hash, begin, end );
+
+        PrintFunctor< StreamType, ByteArray > functor{ stream, bytes, hash };
+        searchSerial( functor );
     }
     catch ( const SerialException& ) {
-        return false;
+        return;
     }
-}
-
-/**
- *
- */
-template< typename Stream >
-bool print( Stream&& stream, const std::string& bytes ) {
-
-    using namespace detail;
-    using HashType = uint64_t;
-
-    auto begin = bytes.data();
-    auto end = begin + sizeof( HashType );
-    HashType ident;
-
-    SerialHelpers< HashType >::fromBytes( ident, begin, end );
-    return print( stream, bytes, ident );
 }
 
 using detail::nulltype;
-template std::string serialize< nulltype >( const nulltype& );
-template nulltype parse< nulltype >( const std::string& );
-template nulltype parse< nulltype >( const char*, std::size_t );
+template std::string serialize< std::string, nulltype >( const nulltype& );
+template nulltype parse< nulltype, std::string >( const std::string& );
 template uint64_t ident< nulltype >();
-template std::string alias< nulltype >();
+template uint64_t ident< std::string >( const std::string& alias );
+template std::string alias< nulltype, std::string >();
+template std::string alias< std::string >( uint64_t );
 template void print< std::ostream&, nulltype >( std::ostream&, const nulltype& );
 template void print< std::ostream, nulltype >( std::ostream&&, const nulltype& );
-template bool print< std::ostream& >( std::ostream&, const std::string&, uint64_t );
-template bool print< std::ostream >( std::ostream&&, const std::string&, uint64_t );
-template bool print< std::ostream& >( std::ostream&, const std::string& );
-template bool print< std::ostream >( std::ostream&&, const std::string& );
+template void trace< std::ostream&, std::string >( std::ostream&, const std::string& );
+template void trace< std::ostream, std::string >( std::ostream&&, const std::string& );
 
-#ifdef QT_CORE_LIB
+#if defined( QT_CORE_LIB )
+
+template QByteArray serialize< QByteArray, nulltype >( const nulltype& );
+template nulltype parse< nulltype, QByteArray >( const QByteArray& );
+template uint64_t ident< QByteArray >( const QByteArray& alias );
+template QByteArray alias< nulltype, QByteArray >();
+template QByteArray alias< QByteArray >( uint64_t );
 template void print< QDebug&, nulltype >( QDebug&, const nulltype& );
 template void print< QDebug, nulltype >( QDebug&&, const nulltype& );
-template bool print< QDebug& >( QDebug&, const std::string&, uint64_t );
-template bool print< QDebug >( QDebug&&, const std::string&, uint64_t );
-template bool print< QDebug& >( QDebug&, const std::string& );
-template bool print< QDebug >( QDebug&&, const std::string& );
+template void trace< std::ostream&, QByteArray >( std::ostream&, const QByteArray& );
+template void trace< std::ostream, QByteArray >( std::ostream&&, const QByteArray& );
+template void trace< QDebug&, std::string >( QDebug&, const std::string& );
+template void trace< QDebug, std::string >( QDebug&&, const std::string& );
+template void trace< QDebug&, QByteArray >( QDebug&, const QByteArray& );
+template void trace< QDebug, QByteArray >( QDebug&&, const QByteArray& );
 
 QDebug operator<<( QDebug dbg, long double value ) {
     dbg << double( value );

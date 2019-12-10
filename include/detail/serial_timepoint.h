@@ -29,12 +29,26 @@ struct SerialHelpers< time_point< Args... >, std::true_type > {
     /**
      *
      */
-    static uint64_t typeHash( uint32_t nesting ) {
+    static constexpr bool matchHash( uint64_t hash ) {
 
-        auto seed = SerialMetatype < ValueType > ::ident();
-        hashCombine( seed, SerialMetatype< ClockType >::ident() );
-        hashCombine( seed, SerialHelpers< DataType >::typeHash( nesting ) );
-        return seed;
+        return typeHash() == hash;
+    }
+
+    /**
+     *
+     */
+    static constexpr uint64_t typeHash() {
+
+        uint64_t type_hash = SERIAL_HASH_MAX;
+        typeHash( type_hash );
+        return type_hash;
+    }
+
+    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+
+        hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
+        hashCombine( hash, aggregate_traits< ClockType >::InternalIdent );
+        SerialHelpers< DataType >::typeHash( hash, nesting );
     }
 
     /**

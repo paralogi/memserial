@@ -27,9 +27,25 @@ struct SerialHelpers< T, is_primitive< T > > {
     /**
      *
      */
-    static uint64_t typeHash( uint32_t nesting ) {
+    static constexpr bool matchHash( uint64_t hash ) {
 
-        return hash< ValueType >();
+        return typeHash() == hash;
+    }
+
+    /**
+     *
+     */
+    static constexpr uint64_t typeHash() {
+
+        uint64_t type_hash = SERIAL_HASH_MAX;
+        typeHash( type_hash );
+        return type_hash;
+    }
+
+    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+
+        hashCombine( hash, rebind_primitive< ValueType >::InternalIdent );
+        hashCombine( hash, uint64_t( sizeof( ValueType ) ) );
     }
 
     /**

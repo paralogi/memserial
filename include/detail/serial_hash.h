@@ -20,49 +20,26 @@ namespace detail {
 /**
  *
  */
-template< typename T, typename I = std::true_type >
-struct SerialHelpers {
-    using ValueType = T;
+struct ReduceFunctor {
+    uint64_t& hash;
 
-    /**
-     *
-     */
-    static uint64_t typeHash( uint32_t ) {
-
-        return 0;
-    }
-
-    /**
-     *
-     */
-    static std::size_t byteSize( const ValueType& ) {
-
-        return 0;
-    }
-
-    /**
-     *
-     */
-    template< typename Iterator >
-    static void toBytes( const ValueType&, Iterator&&, Iterator&& ) {
-
-    }
-
-    /**
-     *
-     */
-    template< typename Iterator >
-    static void fromBytes( ValueType&, Iterator&&, Iterator&& ) {
-
-    }
-
-    /**
-     *
-     */
-    template< typename Stream >
-    static void toDebug( const ValueType&, Stream&&, uint8_t ) {
-
+    template< std::size_t Index >
+    constexpr void operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        hashReduce( hash, SerialHelpers< ValueType >::typeHash() );
     }
 };
+
+/**
+ *
+ */
+uint64_t serialHash() {
+
+    using detail::ReduceFunctor;
+    uint64_t hash = 0;
+    ReduceFunctor functor{ hash };
+    foreachSerial( functor );
+    return hash;
+}
 
 }} // --- namespace

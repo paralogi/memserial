@@ -19,102 +19,125 @@
 namespace memserial {
 
 /**
- * The serialization method of structured data.
- * Returns a sequence of bytes represented by the original structure.
- *
- * Метод сериализации структурированных данных.
- * Возвращает последовательность байт, представленных исходной структурой.
+ * \~english
+ * \brief Checks the version relevance of serialization methods and serializable types for current build.
+ * \return Sign of relevance.
+ * \~russian
+ * \brief Проверяет актуальность версии методов сериализации и сериализуемых типов для текущей сборки.
+ * \return Признак актуальности.
  */
-template< typename T >
-std::string serialize( const T& value );
+bool checkVersion();
 
 /**
- * Method for parsing serialized data.
- * Returns the original data structure recovered from a set of bytes.
- * Throws a SerialException in case of invalid data.
- *
- * Метод разбора сериализованных данных.
- * Возвращает исходную структуру данных, восстановленную из набора байт.
- * Выбрасывает исключение "SerialException" в случае некорректных данных.
+ * \~english
+ * \brief Returns the current version of serialization methods and serializable types.
+ * \return Version number.
+ * \~russian
+ * \brief Возвращает актуальную версию методов сериализации и сериализуемых типов.
+ * \return Номер версии.
  */
-template< typename T >
-T parse( const std::string& bytes );
+uint64_t serialVersion();
 
 /**
- * Overridden method for parsing a pointer to an array of bytes.
- * Throws a SerialException in case of invalid data.
- *
- * Переопределенный метод для разбора указателя на массив байт.
- * Выбрасывает исключение "SerialException" в случае некорректных данных.
+ * \~english
+ * \brief Returns structured data in serialized form.
+ * \param value Original data structure.
+ * \return Byte sequence represented by the original structure.
+ * \~russian
+ * \brief Возвращает структуру данных в сериализованном виде.
+ * \param value Исходная структура данных.
+ * \return Последовательность байт, представленная исходной структурой.
  */
-template< typename T >
-T parse( const char* bytes, std::size_t size );
+template< typename ByteArray = std::string, typename T >
+ByteArray serialize( const T& value );
 
 /**
- * Returns identifier of the serializable type.
- *
- * Возвращает идентификатор сериализуемого типа.
+ * \~english
+ * \brief Returns serialized data in structured form.
+ * \param bytes Byte sequence.
+ * \return Original data structure recovered from a set of bytes.
+ * \throw SerialException In case of invalid data.
+ * \~russian
+ * \brief Возвращает сериализованные данные в структурированном виде.
+ * \param bytes Последовательность байт.
+ * \return Исходная структура данных, восстановленная из набора байт.
+ * \throw SerialException В случае некорректных данных.
+ */
+template< typename T, typename ByteArray >
+T parse( const ByteArray& bytes );
+
+/**
+ * \~english
+ * \brief Returns identifier of a serializable type.
+ * \return Type identifier.
+ * \~russian
+ * \brief Возвращает идентификатор сериализуемого типа.
+ * \return Идентификатор типа.
  */
 template< typename T >
 uint64_t ident();
 
 /**
- * Overridden method returns identifier by type alias.
- * In case the name is not found, will return size_t( -1 ).
- *
- * Переопределенный метод возвращает идентификатор по имени типа.
- * В случае, если имя не найдено, вернет size_t( -1 ).
+ * \~english
+ * \brief Returns identifier of a type by its string name.
+ * \param alias Type string name.
+ * \return Type identifier or -1 if the name is not found.
+ * \~russian
+ * \brief Возвращает идентификатор типа по его строковому имени.
+ * \param alias Строковое имя типа.
+ * \return Идентификатор типа или -1, если имя не найдено.
  */
-uint64_t ident( const std::string& name );
+template< typename ByteArray >
+uint64_t ident( const ByteArray& alias );
 
 /**
- * Overridden method returns identifier by string name.
- * In case the name is not found, will return size_t( -1 ).
- *
- * Переопределенный метод возвращает идентификатор по строковому имени.
- * В случае, если имя не найдено, вернет size_t( -1 ).
+ * \~english
+ * \brief Returns name of a serializable type.
+ * \return Type string name.
+ * \~russian
+ * \brief Возвращает имя сериализуемого типа.
+ * \return Строковое имя типа.
  */
-uint64_t ident( const char* name, std::size_t size );
+template< typename T, typename ByteArray = std::string >
+ByteArray alias();
 
 /**
- * Returns the readable name for the serializable type.
- *
- * Возвращает читаемое имя для сериализуемого типа.
+ * \~english
+ * \brief Returns the name of a type by its identifier.
+ * \param ident Type identifier.
+ * \return Type string name or empty string if identifier is not found.
+ * \~russian
+ * \brief Возвращает имя типа по его идентификатору.
+ * \param ident Идентификатор типа.
+ * \return Строковое имя типа или пустая строка, если идентификатор не найден.
  */
-template< typename T >
-std::string alias();
+template< typename ByteArray = std::string >
+ByteArray alias( uint64_t ident );
 
 /**
- * Overridden method returns name by type identifier.
- * In case the identifier is not found, will return an empty string.
- *
- * Переопределенный метод возвращает имя по идентификатору типа.
- * В случае, если идентификатор не найден, вернет пустую строку.
- */
-std::string alias( uint64_t ident );
-
-/**
- * Prints structured data in a human-readable format.
- *
- * Выводит структурированные данные в человекочитаемом формате.
+ * \~english
+ * \brief Prints structured data in human-readable format.
+ * \param stream Class object for streaming output.
+ * \param value Original data structure.
+ * \~russian
+ * \brief Печатает структуру данных в человекочитаемом формате.
+ * \param stream Объект класса для потокового вывода.
+ * \param value Исходная структура данных.
  */
 template< typename Stream, typename T >
 void print( Stream&& stream, const T& value );
 
 /**
- * Overridden method prints data by type identifier.
- *
- * Переопределенный метод выводит данные по идентификатору типа.
+ * \~english
+ * \brief Prints serialized data in human-readable format.
+ * \param stream Class object for streaming output.
+ * \param bytes Byte sequence.
+ * \~russian
+ * \brief Печатает сериализованные данные в человекочитаемом формате.
+ * \param stream Объект класса для потокового вывода.
+ * \param bytes Последовательность байт.
  */
-template< typename Stream >
-bool print( Stream&& stream, const std::string& bytes, uint64_t ident );
-
-/**
- * The overridden method prints data without type information.
- *
- * Переопределенный метод выводит данные без информации о типе.
- */
-template< typename Stream >
-bool print( Stream&& stream, const std::string& bytes );
+template< typename Stream, typename ByteArray >
+void trace( Stream&& stream, const ByteArray& bytes );
 
 } // --- namespace

@@ -19,9 +19,10 @@
 namespace memserial {
 
 /**
- * The exception class thrown by serialization methods.
- *
- * Класс исключения выбрасываемого методами сериализации.
+ * \~english
+ * \brief The exception class thrown by serialization methods.
+ * \~russian
+ * \brief Класс исключения выбрасываемого методами сериализации.
  */
 class SerialException : public std::exception {
 public:
