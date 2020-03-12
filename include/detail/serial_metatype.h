@@ -20,19 +20,66 @@ namespace detail {
 /**
  *
  */
-struct string_view {
+template< typename T >
+constexpr void hashCombine( T& seed, T value ) {
+    seed ^= value + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 );
+}
+
+/**
+ *
+ */
+template< typename T >
+constexpr void hashReduce( T& seed, T value ) {
+    seed += value;
+}
+
+/**
+ *
+ */
+struct SerialHash {
+    uint64_t hash;
+
+    constexpr SerialHash( uint32_t alias_hash, uint32_t type_hash ) :
+            hash( ( uint64_t( alias_hash ) << 32 ) + type_hash ) {
+    }
+
+    constexpr SerialHash( uint64_t full_hash ) :
+            hash( full_hash ) {
+    }
+
+    constexpr uint32_t aliasHash() {
+        return hash >> 32;
+    }
+
+    constexpr uint32_t typeHash() {
+        return hash;
+    }
+
+    constexpr uint64_t fullHash() {
+        return hash;
+    }
+};
+
+/**
+ *
+ */
+struct SerialAlias {
     char const* data;
     std::size_t size;
 
-    constexpr string_view() :
+    constexpr SerialAlias() :
             data( "" ),
             size( 0 ) {
     }
 
     template< std::size_t N >
-    constexpr string_view( const char ( &str )[ N ] ) :
+    constexpr SerialAlias( const char ( &str )[ N ] ) :
             data( str ),
             size( N - 1 ) {
+    }
+
+    constexpr bool equal( const SerialAlias& str ) const {
+        return equal( str.data, str.size );
     }
 
     constexpr bool equal( const char* str, std::size_t n ) const {
@@ -45,41 +92,17 @@ struct string_view {
         return true;
     }
 
+    constexpr uint32_t hash() const {
+        uint32_t seed = 0;
+        for ( std::size_t i = 0; i < size; ++i )
+            hashCombine( seed, uint32_t( data[ i ] ) );
+        return seed;
+    }
+
     template< typename T >
     constexpr T convert() const {
         return T( data, size );
     }
-};
-
-/**
- *
- */
-template< std::size_t Index >
-struct SerialIdentity {
-    using SerialTag = std::false_type;
-    using InternalTag = std::false_type;
-};
-
-template<>
-struct SerialIdentity< 0 > {
-    using SerialTag = std::true_type;
-    using InternalTag = std::true_type;
-    using ValueType = nulltype;
-};
-
-/**
- *
- */
-template< typename Type >
-struct SerialMetatype {
-    static constexpr uint64_t ident() { return SERIAL_HASH_MAX; }
-    static constexpr string_view alias() { return "undefined"; }
-};
-
-template<>
-struct SerialMetatype< nulltype > {
-    static constexpr uint64_t ident() { return 0; }
-    static constexpr string_view alias() { return "nulltype"; }
 };
 
 /**
@@ -91,9 +114,37 @@ struct SerialHelpers {};
 /**
  *
  */
+template< std::size_t Index >
+struct SerialIdentity {
+    using SerialTag = std::false_type;
+};
+
+template<>
+struct SerialIdentity< 0 > {
+    using SerialTag = std::true_type;
+    using ValueType = nulltype;
+};
+
+/**
+ *
+ */
+template< typename T >
+struct SerialMetatype {
+    static constexpr SerialAlias alias() { return "undefined"; }
+    static constexpr SerialHash hash() { return SERIAL_HASH_MAX; }
+};
+
+template<>
+struct SerialMetatype< nulltype > {
+    static constexpr SerialAlias alias() { return "nulltype"; }
+    static constexpr SerialHash hash() { return { alias().hash(), SERIAL_HASH_MAX }; }
+};
+
+/**
+ *
+ */
 struct SerialOuterTag {};
 struct SerialInterTag : SerialOuterTag {};
-struct SerialInnerTag : SerialInterTag {};
 
 /**
  *
@@ -112,18 +163,6 @@ constexpr size_t_< Tail > counterReminder( Tag, size_t_< Base >, size_t_< Tail >
  *
  */
 template< std::size_t Index, typename Func,
-        typename = typename std::enable_if< SerialIdentity< Index >::InternalTag::value >::type >
-bool searchSerial( Func&, SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
-    return false;
-}
-
-template< std::size_t Begin, std::size_t End, typename Func,
-        typename = typename std::enable_if< SerialIdentity< End >::InternalTag::value >::type >
-bool searchSerial( Func&, SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
-    return false;
-}
-
-template< std::size_t Index, typename Func,
         typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
 bool searchSerial( Func& f, SerialInterTag, size_t_< Index >, size_t_< Index > ) {
     return f( size_t_< Index >{} );
@@ -133,9 +172,9 @@ template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::siz
         typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
 bool searchSerial( Func& f, SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
     constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
-    if ( searchSerial( f, SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} ) )
+    if ( searchSerial( f, SerialInterTag{}, size_t_< Begin >{}, size_t_< middle >{} ) )
         return true;
-    return searchSerial( f, SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+    return searchSerial( f, SerialInterTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
 }
 
 template< std::size_t Begin, std::size_t End, typename Func >
@@ -147,18 +186,6 @@ bool searchSerial( Func&, SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
  *
  */
 template< std::size_t Index, typename Func,
-        typename = typename std::enable_if< SerialIdentity< Index >::InternalTag::value >::type >
-void foreachSerial( Func&, SerialInnerTag, size_t_< Index >, size_t_< Index > ) {
-    return;
-}
-
-template< std::size_t Begin, std::size_t End, typename Func,
-        typename = typename std::enable_if< SerialIdentity< End >::InternalTag::value >::type >
-void foreachSerial( Func&, SerialInnerTag, size_t_< Begin >, size_t_< End > ) {
-    return;
-}
-
-template< std::size_t Index, typename Func,
         typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
 void foreachSerial( Func& f, SerialInterTag, size_t_< Index >, size_t_< Index > ) {
     f( size_t_< Index >{} );
@@ -168,13 +195,36 @@ template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::siz
         typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
 void foreachSerial( Func& f, SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
     constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
-    foreachSerial( f, SerialInnerTag{}, size_t_< Begin >{}, size_t_< middle >{} );
-    foreachSerial( f, SerialInnerTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+    foreachSerial( f, SerialInterTag{}, size_t_< Begin >{}, size_t_< middle >{} );
+    foreachSerial( f, SerialInterTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
 }
 
 template< std::size_t Begin, std::size_t End, typename Func >
 void foreachSerial( Func&, SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
     return;
+}
+
+/**
+ *
+ */
+template< std::size_t Index,
+        typename = typename std::enable_if< SerialIdentity< Index >::SerialTag::value >::type >
+std::size_t countSerial( SerialInterTag, size_t_< Index >, size_t_< Index > ) {
+    return 1;
+}
+
+template< std::size_t Begin = 0, std::size_t End = std::numeric_limits< std::size_t >::max(),
+        typename = typename std::enable_if< SerialIdentity< Begin >::SerialTag::value >::type >
+std::size_t countSerial( SerialInterTag = {}, size_t_< Begin > = {}, size_t_< End > = {} ) {
+    constexpr std::size_t middle = Begin + ( End - Begin ) / 2;
+    std::size_t begin = countSerial( SerialInterTag{}, size_t_< Begin >{}, size_t_< middle >{} );
+    std::size_t end = countSerial( SerialInterTag{}, size_t_< middle + 1 >{}, size_t_< End >{} );
+    return begin + end;
+}
+
+template< std::size_t Begin, std::size_t End >
+std::size_t countSerial( SerialOuterTag, size_t_< Begin >, size_t_< End > ) {
+    return 0;
 }
 
 /**
@@ -204,20 +254,6 @@ constexpr void foreachSequence( Func& f, size_t_< Begin >, size_t_< End > ) {
 template< typename Func, std::size_t Index >
 constexpr void foreachSequence( Func& f, size_t_< Index >, size_t_< Index > ) {
     return;
-}
-
-/**
- *
- */
-constexpr void hashCombine( uint64_t& seed, uint64_t value ) {
-    seed ^= value + 0x9e3779b97f4a7c16 + ( seed << 6 ) + ( seed >> 2 );
-}
-
-/**
- *
- */
-constexpr void hashReduce( uint64_t& seed, uint64_t value ) {
-    seed += value;
 }
 
 }} // --- namespace

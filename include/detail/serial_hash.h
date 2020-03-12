@@ -20,24 +20,47 @@ namespace detail {
 /**
  *
  */
-struct ReduceFunctor {
+struct ReducedHashFunctor {
     uint64_t& hash;
 
     template< std::size_t Index >
     constexpr void operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        hashReduce( hash, SerialHelpers< ValueType >::typeHash() );
+        hashReduce( hash, SerialMetatype< ValueType >::hash().fullHash() );
     }
 };
 
 /**
  *
  */
-uint64_t serialHash() {
+struct PerfectHashFunctor {
+    std::vector< uint64_t >& hash;
 
-    using detail::ReduceFunctor;
+    template< std::size_t Index >
+    constexpr void operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        hash[ Index ] = SerialMetatype< ValueType >::hash().fullHash();
+    }
+};
+
+/**
+ *
+ */
+static uint64_t reducedHash() {
+
     uint64_t hash = 0;
-    ReduceFunctor functor{ hash };
+    ReducedHashFunctor functor{ hash };
+    foreachSerial( functor );
+    return hash;
+}
+
+/**
+ *
+ */
+static std::vector< uint64_t > perfectHash() {
+
+    std::vector< uint64_t > hash( countSerial() );
+    PerfectHashFunctor functor{ hash };
     foreachSerial( functor );
     return hash;
 }

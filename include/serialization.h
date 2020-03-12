@@ -20,6 +20,16 @@ namespace memserial {
 
 /**
  * \~english
+ * \brief Returns the current version of serialization methods and serializable types.
+ * \return Version number.
+ * \~russian
+ * \brief Возвращает актуальную версию методов сериализации и сериализуемых типов.
+ * \return Номер версии.
+ */
+uint64_t serialVersion();
+
+/**
+ * \~english
  * \brief Checks the version relevance of serialization methods and serializable types for current build.
  * \return Sign of relevance.
  * \~russian
@@ -30,13 +40,14 @@ bool checkVersion();
 
 /**
  * \~english
- * \brief Returns the current version of serialization methods and serializable types.
- * \return Version number.
+ * \brief Checks the version relevance of serializable type for current build.
+ * \return Sign of relevance.
  * \~russian
- * \brief Возвращает актуальную версию методов сериализации и сериализуемых типов.
- * \return Номер версии.
+ * \brief Проверяет актуальность версии сериализуемого типа для текущей сборки.
+ * \return Признак актуальности.
  */
-uint64_t serialVersion();
+template< typename T >
+bool checkVersion();
 
 /**
  * \~english

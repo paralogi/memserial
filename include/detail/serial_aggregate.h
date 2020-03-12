@@ -24,7 +24,7 @@ template< typename T >
 struct SerialHelpers< T, is_aggregate< T > > {
     using ValueType = T;
     static constexpr std::size_t TupleNesting = rebind_aggregate< T >::TupleNesting;
-    static constexpr uint64_t TupleSize = rebind_aggregate< T >::TupleSize;
+    static constexpr std::size_t TupleSize = rebind_aggregate< T >::TupleSize;
 
     template< std::size_t Index >
     using TupleField = typename rebind_aggregate< T >::template TupleField< Index >;
@@ -35,9 +35,9 @@ struct SerialHelpers< T, is_aggregate< T > > {
     /**
      *
      */
-    static constexpr bool matchHash( uint64_t hash ) {
+    static constexpr bool matchHash( uint32_t hash ) {
 
-        uint64_t type_hash = SERIAL_HASH_MAX;
+        uint32_t type_hash = SERIAL_HASH_MAX;
         if ( type_hash == hash )
             return true;
 
@@ -48,14 +48,14 @@ struct SerialHelpers< T, is_aggregate< T > > {
     /**
      *
      */
-    static constexpr uint64_t typeHash() {
+    static constexpr uint32_t typeHash() {
 
-        uint64_t type_hash = SERIAL_HASH_MAX;
+        uint32_t type_hash = SERIAL_HASH_MAX;
         typeHash( type_hash );
         return type_hash;
     }
 
-    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
 
         if ( nesting == 0 )
             return;
@@ -127,8 +127,8 @@ struct SerialHelpers< T, is_aggregate< T > > {
      *
      */
     struct MatchHashFunctor {
-        uint64_t& type_hash;
-        uint64_t hash;
+        uint32_t& type_hash;
+        uint32_t hash;
         std::size_t nesting;
 
         template< std::size_t Index >
@@ -142,7 +142,7 @@ struct SerialHelpers< T, is_aggregate< T > > {
      *
      */
     struct TypeHashFunctor {
-        uint64_t& hash;
+        uint32_t& hash;
         std::size_t nesting;
 
         template< std::size_t Index >

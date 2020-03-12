@@ -121,31 +121,31 @@ using is_integer_unsigned = std::integral_constant< bool,
 template< typename T, typename = std::true_type >
 struct rebind_primitive {
     using InternalType = T;
-    static constexpr uint64_t InternalIdent = primitive_traits< T >::InternalIdent;
+    static constexpr uint32_t InternalIdent = primitive_traits< T >::InternalIdent;
 };
 
 template< typename T >
 struct rebind_primitive< T, is_integer_signed< T > > {
     using InternalType = T;
-    static constexpr uint64_t InternalIdent = 1 << 8;
+    static constexpr uint32_t InternalIdent = 1 << 8;
 };
 
 template< typename T >
 struct rebind_primitive< T, is_integer_unsigned< T > > {
     using InternalType = T;
-    static constexpr uint64_t InternalIdent = 2 << 8;
+    static constexpr uint32_t InternalIdent = 2 << 8;
 };
 
 template< typename T >
 struct rebind_primitive< T, typename std::is_floating_point< T >::type > {
     using InternalType = T;
-    static constexpr uint64_t InternalIdent = 3 << 8;
+    static constexpr uint32_t InternalIdent = 3 << 8;
 };
 
 template< typename T >
 struct rebind_primitive< T, typename std::is_enum< T >::type > {
     using InternalType = typename std::underlying_type< T >::type;
-    static constexpr uint64_t InternalIdent = rebind_primitive< InternalType >::InternalIdent << 16;
+    static constexpr uint32_t InternalIdent = rebind_primitive< InternalType >::InternalIdent << 16;
 };
 
 /**
@@ -153,47 +153,47 @@ struct rebind_primitive< T, typename std::is_enum< T >::type > {
  */
 template< typename T >
 struct aggregate_traits : public std::true_type {
-    static constexpr uint64_t InternalIdent = 0;
+    static constexpr uint32_t InternalIdent = 0;
 };
 
 template< typename Arg, std::size_t Dim >
 struct aggregate_traits< array< Arg, Dim > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 1;
+    static constexpr uint32_t InternalIdent = 1;
 };
 
 template< std::size_t Bits >
 struct aggregate_traits< bitset< Bits > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 2;
+    static constexpr uint32_t InternalIdent = 2;
 };
 
 template< typename ... Args >
 struct aggregate_traits< basic_string< Args... > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 3;
+    static constexpr uint32_t InternalIdent = 3;
 };
 
 template< typename ... Args >
 struct aggregate_traits< vector< Args... > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 4;
+    static constexpr uint32_t InternalIdent = 4;
 };
 
 template< typename ... Args >
 struct aggregate_traits< time_point< Args... > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 5;
+    static constexpr uint32_t InternalIdent = 5;
 };
 
 template< typename ... Args >
 struct aggregate_traits< duration< Args... > > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 6;
+    static constexpr uint32_t InternalIdent = 6;
 };
 
 template<>
 struct aggregate_traits< system_clock > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 7;
+    static constexpr uint32_t InternalIdent = 7;
 };
 
 template<>
 struct aggregate_traits< steady_clock > : public std::false_type {
-    static constexpr uint64_t InternalIdent = 8;
+    static constexpr uint32_t InternalIdent = 8;
 };
 
 /**

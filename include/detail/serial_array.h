@@ -28,9 +28,9 @@ struct SerialHelpers< array< Arg, Dim >, std::true_type > {
     /**
      *
      */
-    static constexpr bool matchHash( uint64_t hash ) {
+    static constexpr bool matchHash( uint32_t hash ) {
 
-        uint64_t type_hash = SERIAL_HASH_MAX;
+        uint32_t type_hash = SERIAL_HASH_MAX;
         for ( std::size_t index = 0; index < Dim && type_hash != hash; ++index )
             SerialHelpers< DataType >::typeHash( type_hash );
 
@@ -40,14 +40,14 @@ struct SerialHelpers< array< Arg, Dim >, std::true_type > {
     /**
      *
      */
-    static constexpr uint64_t typeHash() {
+    static constexpr uint32_t typeHash() {
 
-        uint64_t type_hash = SERIAL_HASH_MAX;
+        uint32_t type_hash = SERIAL_HASH_MAX;
         typeHash( type_hash );
         return type_hash;
     }
 
-    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
 
         for ( std::size_t index = 0; index < Dim; ++index )
             SerialHelpers< DataType >::typeHash( hash, nesting );

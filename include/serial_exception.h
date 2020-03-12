@@ -29,6 +29,7 @@ public:
     enum ExceptionCode {
         ExcOutOfRange,
         ExcTypeMissmatch,
+        ExcBinaryIncompatible
     };
 
     SerialException( ExceptionCode code ) :
@@ -46,6 +47,8 @@ public:
             return "buffer size is too small";
         case ExcTypeMissmatch:
             return "data type not matching";
+        case ExcBinaryIncompatible:
+            return "data type binary incompatible";
         default:
             return "unknown exception case";
         }

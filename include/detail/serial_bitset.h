@@ -27,7 +27,7 @@ struct SerialHelpers< bitset< Bits >, std::true_type > {
     /**
      *
      */
-    static constexpr bool matchHash( uint64_t hash ) {
+    static constexpr bool matchHash( uint32_t hash ) {
 
         return typeHash() == hash;
     }
@@ -35,17 +35,17 @@ struct SerialHelpers< bitset< Bits >, std::true_type > {
     /**
      *
      */
-    static constexpr uint64_t typeHash() {
+    static constexpr uint32_t typeHash() {
 
-        uint64_t type_hash = SERIAL_HASH_MAX;
+        uint32_t type_hash = SERIAL_HASH_MAX;
         typeHash( type_hash );
         return type_hash;
     }
 
-    static constexpr void typeHash( uint64_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
 
         hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
-        hashCombine( hash, uint64_t( Bits ) );
+        hashCombine( hash, uint32_t( Bits ) );
     }
 
     /**

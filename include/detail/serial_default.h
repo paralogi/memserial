@@ -17,15 +17,18 @@
 namespace memserial {
 namespace detail {
 
-extern const uint64_t SerialHashStatic;
+#if !defined( DISABLE_STATIC_HASH )
+extern const uint64_t ReducedHashStatic;
+extern const std::vector< uint64_t > PerfectHashStatic;
+#endif
 
 /**
  *
  */
 struct MatchFunctor {
     bool& match_result;
-    uint64_t match_hash;
-    uint64_t value_hash;
+    uint32_t match_hash;
+    uint32_t value_hash;
 
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
@@ -50,7 +53,7 @@ struct HashFunctor {
         using ValueType = typename SerialIdentity< Index >::ValueType;
         if ( !SerialMetatype< ValueType >::alias().equal( alias.data(), alias.size() ) )
             return false;
-        SerialHelpers< ValueType >::typeHash( hash );
+        hash = SerialMetatype< ValueType >::hash().fullHash();
         return true;
     }
 };
@@ -66,9 +69,9 @@ struct AliasFunctor {
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        if ( SerialHelpers< ValueType >::typeHash() != hash )
+        if ( SerialMetatype< ValueType >::hash().fullHash() != hash )
             return false;
-        string_view type_alias = SerialMetatype< ValueType >::alias();
+        SerialAlias type_alias = SerialMetatype< ValueType >::alias();
         alias = type_alias.convert< ByteArray >();
         return true;
     }
@@ -86,7 +89,7 @@ struct PrintFunctor {
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        if ( SerialHelpers< ValueType >::typeHash() != hash )
+        if ( SerialMetatype< ValueType >::hash().fullHash() != hash )
             return false;
         print( stream, parse< ValueType >( bytes ) );
         return true;
@@ -98,20 +101,42 @@ struct PrintFunctor {
 /**
  *
  */
-bool checkVersion() {
+uint64_t serialVersion() {
 
-    using detail::serialHash;
-    using detail::SerialHashStatic;
-    return serialHash() == SerialHashStatic;
+    using detail::reducedHash;
+    return reducedHash();
 }
 
 /**
  *
  */
-uint64_t serialVersion() {
+bool checkVersion() {
 
-    using detail::serialHash;
-    return serialHash();
+#if !defined( DISABLE_STATIC_HASH )
+    using detail::reducedHash;
+    using detail::ReducedHashStatic;
+    return reducedHash() == ReducedHashStatic;
+#else
+    return true;
+#endif
+}
+
+/**
+ *
+ */
+template< typename T >
+bool checkVersion() {
+
+#if !defined( DISABLE_STATIC_HASH )
+    using detail::PerfectHashStatic;
+    using detail::SerialMetatype;
+
+    uint64_t hash = SerialMetatype< T >::hash().fullHash();
+    auto result = std::find( begin( PerfectHashStatic ), end( PerfectHashStatic ), hash );
+    return result != std::end( PerfectHashStatic );
+#else
+    return true;
+#endif
 }
 
 /**
@@ -120,12 +145,12 @@ uint64_t serialVersion() {
 template< typename ByteArray, typename T >
 ByteArray serialize( const T& value ) {
 
-    assert( checkVersion() );
+    assert( checkVersion< T >() );
 
+    using detail::SerialMetatype;
     using detail::SerialHelpers;
-    using detail::size_t_;
 
-    uint64_t hash = SerialHelpers< T >::typeHash();
+    uint64_t hash = SerialMetatype< T >::hash().fullHash();
     std::size_t size = SerialHelpers< T >::byteSize( value ) + sizeof( uint64_t );
 
     ByteArray bytes;
@@ -144,24 +169,31 @@ ByteArray serialize( const T& value ) {
 template< typename T, typename ByteArray >
 T parse( const ByteArray& bytes ) {
 
-    assert( checkVersion() );
+    assert( checkVersion< T >() );
 
+    using detail::SerialMetatype;
     using detail::SerialHelpers;
+    using detail::SerialHash;
     using detail::MatchFunctor;
-    using detail::size_t_;
 
-    uint64_t value_hash;
+    uint64_t hash;
     auto begin = bytes.begin();
     auto end = bytes.end();
-    SerialHelpers< uint64_t >::fromBytes( value_hash, begin, end );
+    SerialHelpers< uint64_t >::fromBytes( hash, begin, end );
 
-    uint64_t match_hash = SerialHelpers< T >::typeHash();
-    if ( match_hash != value_hash ) {
+    SerialHash match_hash = SerialMetatype< T >::hash();
+    SerialHash value_hash( hash );
+
+    if ( match_hash.aliasHash() != value_hash.aliasHash() ) {
         bool match_result = false;
-        MatchFunctor functor{ match_result, match_hash, value_hash };
+        MatchFunctor functor{ match_result, match_hash.typeHash(), value_hash.typeHash() };
         searchSerial( functor );
         if ( !match_result )
             throw SerialException( SerialException::ExcTypeMissmatch );
+    }
+
+    else if ( match_hash.typeHash() != value_hash.typeHash() ) {
+        throw SerialException( SerialException::ExcBinaryIncompatible );
     }
 
     T value;
@@ -175,11 +207,13 @@ T parse( const ByteArray& bytes ) {
 template< typename T >
 uint64_t ident() {
 
-    assert( checkVersion() );
+    assert( checkVersion< T >() );
 
-    using detail::SerialHelpers;
-    using detail::size_t_;
-    return SerialHelpers< T >::typeHash();
+    using detail::SerialMetatype;
+    using detail::SerialHash;
+
+    SerialHash hash = SerialMetatype< T >::hash();
+    return hash.fullHash();
 }
 
 /**
@@ -187,8 +221,6 @@ uint64_t ident() {
  */
 template< typename ByteArray >
 uint64_t ident( const ByteArray& alias ) {
-
-    assert( checkVersion() );
 
     using detail::HashFunctor;
 
@@ -204,12 +236,12 @@ uint64_t ident( const ByteArray& alias ) {
 template< typename T, typename ByteArray >
 ByteArray alias() {
 
-    assert( checkVersion() );
+    assert( checkVersion< T >() );
 
     using detail::SerialMetatype;
-    using detail::string_view;
+    using detail::SerialAlias;
 
-    string_view alias = SerialMetatype< T >::alias();
+    SerialAlias alias = SerialMetatype< T >::alias();
     return alias.convert< ByteArray >();
 }
 
@@ -218,8 +250,6 @@ ByteArray alias() {
  */
 template< typename ByteArray >
 ByteArray alias( uint64_t ident ) {
-
-    assert( checkVersion() );
 
     using detail::AliasFunctor;
 
@@ -235,7 +265,7 @@ ByteArray alias( uint64_t ident ) {
 template< typename Stream, typename T >
 void print( Stream&& stream, const T& value ) {
 
-    assert( checkVersion() );
+    assert( checkVersion< T >() );
 
     using detail::SerialHelpers;
     SerialHelpers< T >::toDebug( value, stream, 0 );
@@ -246,8 +276,6 @@ void print( Stream&& stream, const T& value ) {
  */
 template< typename Stream, typename ByteArray >
 void trace( Stream&& stream, const ByteArray& bytes ) {
-
-    assert( checkVersion() );
 
     using detail::SerialHelpers;
     using detail::PrintFunctor;

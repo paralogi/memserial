@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2019 Antony Polukhin
+// Copyright (c) 2016-2020 Antony Polukhin
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -60,7 +60,7 @@ namespace typeid_conversions {
 
 constexpr std::size_t native_types_mask = 31;
 constexpr std::size_t bits_per_extension = 3;
-constexpr std::size_t extension_maks = (
+constexpr std::size_t extension_mask = (
     static_cast<std::size_t>((1 << bits_per_extension) - 1)
         << static_cast<std::size_t>(sizeof(std::size_t) * 8 - bits_per_extension)
 );
@@ -89,7 +89,7 @@ constexpr std::size_t native_ref_type = (
 );
 
 template <std::size_t Index, std::size_t Extension>
-using if_extension = std::enable_if_t< (Index & extension_maks) == Extension >*;
+using if_extension = std::enable_if_t< (Index & extension_mask) == Extension >*;
 
 ///////////////////// Helper functions
 template <std::size_t Unptr>
