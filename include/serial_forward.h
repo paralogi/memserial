@@ -41,7 +41,9 @@
  * Максимальное значение вложенности для сериализуемых типов, по умолчанию 16.
  * Предотвращает зацикливание в случае рекурсивных структур.
  */
+#if !defined( SERIAL_NESTING_MAX )
 #define SERIAL_NESTING_MAX 16
+#endif
 
 /**
  * \internal
@@ -52,7 +54,9 @@
  * Максимальное значение хэш-функции.
  * Используется как начальное значение для расчета.
  */
+#if !defined( SERIAL_HASH_MAX )
 #define SERIAL_HASH_MAX 0xffffffff
+#endif
 
 #include "serial_exception.h"
 #include "detail/serial_traits.h"
