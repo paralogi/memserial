@@ -18,17 +18,18 @@ Current implementation is compatible with data types from standard library:
 * `std::chrono`
 * `std::string`
 * `std::vector`
+* `std::tuple`
 
-Optionaly
+Library can be optionally compiled with Qt5 to enable `QByteArray` support.
 
-The only requirement is compiler with c++14 support. 
+The only requirement is compiler with c++14. 
 
 ### Restrictions
 * Serializable type is a structured data type that meets aggregate initialization requirements. 
 
-* Structure fields may only include previously mentioned data types, including other serializable types.
-
 * The structure as a whole and its fields should not have explicit alignment, this also applies to attributes like `[[gnu::packed]]`.
+
+* Nesting of structures is limited to prevent looping in case of recursion. Maximum nesting level can be altered by `SERIAL_NESTING_MAX` macro.
 
 ### Example 1
 ```c++
