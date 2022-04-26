@@ -21,40 +21,39 @@ namespace detail {
  *
  */
 template< std::size_t Bits >
-struct SerialHelpers< bitset< Bits >, std::true_type > {
+struct SerialType< bitset< Bits >, std::true_type > {
     using ValueType = bitset< Bits >;
 
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t value ) {
 
-        return typeHash() == hash;
+        return hash() == value;
     }
 
     /**
      *
      */
-    static constexpr uint32_t typeHash() {
+    static constexpr uint32_t hash() {
 
-        uint32_t type_hash = SERIAL_HASH_MAX;
-        typeHash( type_hash );
-        return type_hash;
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
     }
 
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
-        hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
-        hashCombine( hash, uint32_t( Bits ) );
+        hash_combine( value, serial_traits< ValueType >::internal_ident );
+        hash_combine( value, uint32_t( Bits ) );
     }
 
     /**
      *
      */
-    static std::size_t byteSize( const ValueType& value ) {
+    static std::size_t size( const ValueType& value ) {
 
-        constexpr auto bytes_count = Bits / __CHAR_BIT__ +
-                ( Bits % __CHAR_BIT__ == 0 ? 0 : 1 );
+        constexpr auto bytes_count = Bits / CHAR_BIT + ( Bits % CHAR_BIT == 0 ? 0 : 1 );
         return bytes_count;
     }
 
@@ -62,36 +61,36 @@ struct SerialHelpers< bitset< Bits >, std::true_type > {
      *
      */
     template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( byteSize( value ) ) <= std::distance( begin, end ) );
+        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
 
         for ( std::size_t index = 0; index < Bits; ++index )
-            begin[ index / __CHAR_BIT__ ] |= ( value[ index ] << ( index % __CHAR_BIT__ ) );
+            begin[ index / CHAR_BIT ] |= ( value[ index ] << ( index % CHAR_BIT ) );
 
-        begin += byteSize( value );
+        begin += size( value );
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        if ( std::ptrdiff_t( byteSize( value ) ) > std::distance( begin, end ) )
+        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
             throw SerialException( SerialException::ExcOutOfRange );
 
         for ( std::size_t index = 0; index < Bits; ++index )
-            value[ index ] = ( ( begin[ index / __CHAR_BIT__ ] >> ( index % __CHAR_BIT__ ) ) & 1 );
+            value[ index ] = ( ( begin[ index / CHAR_BIT ] >> ( index % CHAR_BIT ) ) & 1 );
 
-        begin += byteSize( value );
+        begin += size( value );
     }
 
     /**
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << SerialMetatype< ValueType >::alias().data <<
                 "< " << Bits << " >: " <<

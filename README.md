@@ -4,7 +4,7 @@ Library contains serialization methods that can be used in conjunction with user
 Based on [magic_get](https://github.com/apolukhin/magic_get.git) library.
 
 ### Description
-To enable serialization support for new data types use macro `ENABLE_SERIAL_TYPE_INFO( Type )`.
+To enable serialization support for new data types use macro `SERIAL_TYPE_INFO( Type )`.
 This macro provides information to generate an optimal serialization plan for the source type.
 
 Serialized message is a raw sequence of bytes and includes header and data sections. 
@@ -16,9 +16,10 @@ Current implementation is compatible with data types from standard library:
 * `std::array`
 * `std::bitset`
 * `std::chrono`
+* `std::complex`
 * `std::string`
-* `std::vector`
 * `std::tuple`
+* `std::vector`
 
 Library can be optionally compiled with Qt5 to enable `QByteArray` support.
 
@@ -29,7 +30,7 @@ The only requirement is compiler with c++14.
 
 * The structure as a whole and its fields should not have explicit alignment, this also applies to attributes like `[[gnu::packed]]`.
 
-* Nesting of structures is limited to prevent looping in case of recursion. Maximum nesting level can be altered by `SERIAL_NESTING_MAX` macro.
+* Nesting of structures is limited to prevent looping in case of recursion. Maximum nesting level can be altered by `SERIAL_NESTING_LIMIT` macro.
 
 ### Example 1
 ```c++
@@ -48,7 +49,7 @@ int main() {
 
     std::string bytes = memserial::serialize( article );
     Article value = memserial::parse< Article >( bytes );
-    memserial::print( std::cout, value );
+    memserial::print( value );
 }
 ```
 Output:
@@ -77,8 +78,8 @@ struct Article {
     std::vector< Article > refs;
 };
 
-ENABLE_SERIAL_TYPE_INFO( Header )
-ENABLE_SERIAL_TYPE_INFO( Article )
+SERIAL_TYPE_INFO( Header )
+SERIAL_TYPE_INFO( Article )
 
 int main() {
     Article article { "Article1", {
@@ -88,10 +89,10 @@ int main() {
 
     std::string bytes = memserial::serialize( article );
 
-    memserial::print( std::cout, memserial::parse< Header >( bytes ) );
+    memserial::print( memserial::parse< Header >( bytes ) );
     std::cout << '\n';
 
-    memserial::trace( std::cout, bytes );
+    memserial::trace( bytes );
 }
 ```
 Output:

@@ -21,33 +21,33 @@ namespace detail {
  *
  */
 template<>
-struct SerialHelpers< nulltype, std::true_type > {
+struct SerialType< nulltype, std::true_type > {
     using ValueType = nulltype;
 
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t hash ) {
 
-        return SERIAL_HASH_MAX == hash;
+        return SERIAL_HASH_SALT == hash;
     }
 
     /**
      *
      */
-    static constexpr uint32_t typeHash() {
+    static constexpr uint32_t hash() {
 
-        return SERIAL_HASH_MAX;
+        return SERIAL_HASH_SALT;
     }
 
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void hash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
     }
 
     /**
      *
      */
-    static std::size_t byteSize( const ValueType& ) {
+    static std::size_t size( const ValueType& ) {
 
         return 0;
     }
@@ -56,7 +56,7 @@ struct SerialHelpers< nulltype, std::true_type > {
      *
      */
     template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
     }
 
@@ -64,7 +64,7 @@ struct SerialHelpers< nulltype, std::true_type > {
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
     }
 
@@ -72,7 +72,7 @@ struct SerialHelpers< nulltype, std::true_type > {
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
     }
 };

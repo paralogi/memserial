@@ -21,37 +21,37 @@ namespace detail {
  *
  */
 template< typename T >
-struct SerialHelpers< T, is_primitive< T > > {
+struct SerialType< T, is_primitive< T > > {
     using ValueType = T;
 
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t value ) {
 
-        return typeHash() == hash;
+        return hash() == value;
     }
 
     /**
      *
      */
-    static constexpr uint32_t typeHash() {
+    static constexpr uint32_t hash() {
 
-        uint32_t type_hash = SERIAL_HASH_MAX;
-        typeHash( type_hash );
-        return type_hash;
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
     }
 
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
-        hashCombine( hash, rebind_primitive< ValueType >::InternalIdent );
-        hashCombine( hash, uint32_t( sizeof( ValueType ) ) );
+        hash_combine( value, rebind_primitive< ValueType >::internal_ident );
+        hash_combine( value, uint32_t( sizeof( ValueType ) ) );
     }
 
     /**
      *
      */
-    static std::size_t byteSize( const ValueType& ) {
+    static std::size_t size( const ValueType& ) {
 
         return sizeof( ValueType );
     }
@@ -60,35 +60,30 @@ struct SerialHelpers< T, is_primitive< T > > {
      *
      */
     template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( byteSize( value ) ) <= std::distance( begin, end ) );
+        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
 
-        auto data_size = sizeof( ValueType );
-        auto raw_data = reinterpret_cast< const char* >( &value );
-        begin = std::copy_n( raw_data, data_size, begin );
+        begin.bout( value );
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        auto data_size = sizeof( ValueType );
-        if ( std::ptrdiff_t( data_size ) > std::distance( begin, end ) )
+        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
             throw SerialException( SerialException::ExcOutOfRange );
 
-        auto raw_data = reinterpret_cast< char* >( &value );
-        std::copy_n( begin, data_size, raw_data );
-        begin += data_size;
+        begin.bin( value );
     }
 
     /**
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << +value;
     }

@@ -20,24 +20,18 @@ namespace detail {
 /**
  *
  */
-template< typename T >
-struct SerialType< T, is_serial< T > > {
-    using ValueType = T;
-    static constexpr std::size_t tuple_size = rebind_serial< T >::tuple_size;
+template< typename ... Args >
+struct SerialType< tuple< Args... >, std::true_type > {
+    using ValueType = tuple< Args... >;
+    static constexpr std::size_t tuple_size = std::tuple_size< ValueType >::value;
 
     template< std::size_t Index >
-    using tuple_field = typename rebind_serial< T >::template tuple_field< Index >;
-
-    template< std::size_t Index >
-    using FieldType = typename tuple_field< Index >::FieldType;
+    using FieldType = typename std::tuple_element< Index, ValueType >::type;
 
     /**
      *
      */
     static constexpr bool match( uint32_t value ) {
-
-        if ( value == SERIAL_HASH_SALT )
-            return true;
 
         MatchFunctor functor{ value, SERIAL_HASH_SALT, SERIAL_NESTING_LIMIT };
         return search_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
@@ -55,9 +49,6 @@ struct SerialType< T, is_serial< T > > {
 
     static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
-        if ( nesting == 0 )
-            return;
-
         HashFunctor functor{ value, nesting };
         foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
     }
@@ -71,7 +62,6 @@ struct SerialType< T, is_serial< T > > {
 
         SizeFunctor functor{ const_cast< ValueType& >( value ), byte_size };
         foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
-
         return byte_size;
     }
 
@@ -103,11 +93,6 @@ struct SerialType< T, is_serial< T > > {
 
         stream << SerialMetatype< ValueType >::alias().data << ": ";
 
-        if ( tuple_size == 0 ) {
-            stream << "empty";
-            return;
-        }
-
         std::string separator( 3 * ( level + 1 ) + 1, ' ' );
         separator[ 0 ] = '\n';
 
@@ -125,7 +110,7 @@ struct SerialType< T, is_serial< T > > {
 
         template< std::size_t Index >
         constexpr bool operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::hash( real_hash, nesting - 1 );
+            SerialType< FieldType< Index > >::hash( real_hash, nesting );
             return real_hash == value;
         }
     };
@@ -139,7 +124,7 @@ struct SerialType< T, is_serial< T > > {
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::hash( value, nesting - 1 );
+            SerialType< FieldType< Index > >::hash( value, nesting );
         }
     };
 
@@ -152,7 +137,7 @@ struct SerialType< T, is_serial< T > > {
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            byte_size += SerialType< FieldType< Index > >::size( tuple_field< Index >::get( value ) );
+            byte_size += SerialType< FieldType< Index > >::size( std::get< Index >( value ) );
         }
     };
 
@@ -167,7 +152,7 @@ struct SerialType< T, is_serial< T > > {
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::bout( tuple_field< Index >::get( value ), begin, end );
+            SerialType< FieldType< Index > >::bout( std::get< Index >( value ), begin, end );
         }
     };
 
@@ -182,7 +167,7 @@ struct SerialType< T, is_serial< T > > {
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::bin( tuple_field< Index >::get( value ), begin, end );
+            SerialType< FieldType< Index > >::bin( std::get< Index >( value ), begin, end );
         }
     };
 
@@ -201,7 +186,7 @@ struct SerialType< T, is_serial< T > > {
             stream << separator.c_str();
             if ( is_primitive< FieldType< Index > >::value )
                 stream << SerialMetatype< FieldType< Index > >::alias().data << ": ";
-            SerialType< FieldType< Index > >::debug( tuple_field< Index >::get( value ), stream, level + 1 );
+            SerialType< FieldType< Index > >::debug( std::get< Index >( value ), stream, level + 1 );
         }
     };
 };

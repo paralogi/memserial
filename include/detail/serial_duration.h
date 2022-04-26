@@ -20,63 +20,63 @@ namespace detail {
 /**
  *
  */
-template< typename ... Args >
-struct SerialHelpers< duration< Args... >, std::true_type > {
-    using ValueType = duration< Args... >;
+template< typename Rep, typename Period >
+struct SerialType< duration< Rep, Period >, std::true_type > {
+    using ValueType = duration< Rep, Period >;
     using PeriodType = typename ValueType::period;
     using DataType = typename ValueType::rep;
 
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t value ) {
 
-        return typeHash() == hash;
+        return hash() == value;
     }
 
     /**
      *
      */
-    static constexpr uint32_t typeHash() {
+    static constexpr uint32_t hash() {
 
-        uint32_t type_hash = SERIAL_HASH_MAX;
-        typeHash( type_hash );
-        return type_hash;
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
     }
 
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
-        hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
-        hashCombine( hash, uint32_t( PeriodType::num ) );
-        hashCombine( hash, uint32_t( PeriodType::den ) );
-        SerialHelpers< DataType >::typeHash( hash, nesting );
-    }
-
-    /**
-     *
-     */
-    static std::size_t byteSize( const ValueType& value ) {
-
-        return SerialHelpers< DataType >::byteSize( value.count() );
+        hash_combine( value, serial_traits< ValueType >::internal_ident );
+        hash_combine( value, uint32_t( PeriodType::num ) );
+        hash_combine( value, uint32_t( PeriodType::den ) );
+        SerialType< DataType >::hash( value, nesting );
     }
 
     /**
      *
      */
-    template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static std::size_t size( const ValueType& value ) {
 
-        SerialHelpers< DataType >::toBytes( value.count(), begin, end );
+        return SerialType< DataType >::size( value.count() );
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+
+        SerialType< DataType >::bout( value.count(), begin, end );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
         DataType data;
-        SerialHelpers< DataType >::fromBytes( data, begin, end );
+        SerialType< DataType >::bin( data, begin, end );
         value = ValueType( data );
     }
 
@@ -84,12 +84,12 @@ struct SerialHelpers< duration< Args... >, std::true_type > {
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << SerialMetatype< ValueType >::alias().data <<
                 "< " << PeriodType::num << "/" << PeriodType::den << " >: ";
 
-        SerialHelpers< DataType >::toDebug( value.count(), stream, level );
+        SerialType< DataType >::debug( value.count(), stream, level );
     }
 };
 

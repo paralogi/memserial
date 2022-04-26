@@ -20,10 +20,9 @@ namespace detail {
 /**
  *
  */
-template< typename ... Args >
-struct SerialType< basic_string< Args... >, is_primitive< typename basic_string< Args... >::value_type > > {
-    using ValueType = basic_string< Args... >;
-    using SizeType = uint32_t;
+template< typename Arg >
+struct SerialType< complex< Arg >, is_primitive< typename complex< Arg >::value_type > > {
+    using ValueType = complex< Arg >;
     using DataType = typename ValueType::value_type;
 
     /**
@@ -47,7 +46,6 @@ struct SerialType< basic_string< Args... >, is_primitive< typename basic_string<
     static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
         hash_combine( value, serial_traits< ValueType >::internal_ident );
-        SerialType< SizeType >::hash( value, nesting );
         SerialType< DataType >::hash( value, nesting );
     }
 
@@ -56,9 +54,7 @@ struct SerialType< basic_string< Args... >, is_primitive< typename basic_string<
      */
     static std::size_t size( const ValueType& value ) {
 
-        assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
-
-        return sizeof( SizeType ) + sizeof( DataType ) * value.size();
+        return sizeof( DataType ) * 2;
     }
 
     /**
@@ -69,9 +65,11 @@ struct SerialType< basic_string< Args... >, is_primitive< typename basic_string<
 
         assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
 
-        SizeType data_size = value.size();
-        begin.bout( data_size );
-        begin.bout( &value[ 0 ], data_size );
+        DataType real_part = value.real();
+        begin.bout( real_part );
+
+        DataType imag_part = value.imag();
+        begin.bout( imag_part );
     }
 
     /**
@@ -80,17 +78,17 @@ struct SerialType< basic_string< Args... >, is_primitive< typename basic_string<
     template< typename Iterator >
     static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        if ( std::ptrdiff_t( sizeof( SizeType ) ) > std::distance( begin, end ) )
+        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
             throw SerialException( SerialException::ExcOutOfRange );
 
-        SizeType data_size;
-        begin.bin( data_size );
+        DataType real_part;
+        begin.bin( real_part );
 
-        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+        DataType imag_part;
+        begin.bin( imag_part );
 
-        value.resize( data_size );
-        begin.bin( &value[ 0 ], data_size );
+        value.real( real_part );
+        value.imag( imag_part );
     }
 
     /**
@@ -100,8 +98,8 @@ struct SerialType< basic_string< Args... >, is_primitive< typename basic_string<
     static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << SerialMetatype< ValueType >::alias().data <<
-                "[" << value.size() << "]: " <<
-                '"' << value.c_str() << '"';
+                "< " << SerialMetatype< DataType >::alias().data <<
+                " >: " << value.real() << "+" << value.imag() << "i";
     }
 };
 

@@ -1,5 +1,5 @@
 // Copyright (c) 2017-2018 Alexandr Poltavsky, Antony Polukhin.
-// Copyright (c) 2019-2020 Antony Polukhin.
+// Copyright (c) 2019-2022 Antony Polukhin.
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -33,6 +33,7 @@
 #include <boost/pfr/detail/make_integer_sequence.hpp>
 #include <boost/pfr/detail/sequence_tuple.hpp>
 #include <boost/pfr/detail/rvalue_t.hpp>
+#include <boost/pfr/detail/unsafe_declval.hpp>
 
 
 #ifdef __clang__
@@ -59,12 +60,6 @@ struct tag {
     friend auto loophole(tag<T,N>);
 };
 
-// For returning non default constructible types. Never used at runtime! GCC's std::declval may not be used in potentionally evaluated contexts, so it does not work here.
-template <class T> constexpr T& unsafe_declval_like() noexcept {
-    T* ptr = nullptr;
-    return *ptr;
-}
-
 // The definitions of friend functions.
 template <class T, class U, std::size_t N, bool B>
 struct fn_def_lref {
@@ -75,13 +70,13 @@ struct fn_def_lref {
         // To workaround the issue, we check that the type U is movable, and move it in that case.
         using no_extents_t = std::remove_all_extents_t<U>;
         return static_cast< std::conditional_t<std::is_move_constructible<no_extents_t>::value, no_extents_t&&, no_extents_t&> >(
-            boost::pfr::detail::unsafe_declval_like<no_extents_t>()
+            boost::pfr::detail::unsafe_declval<no_extents_t&>()
         );
     }
 };
 template <class T, class U, std::size_t N, bool B>
 struct fn_def_rref {
-    friend auto loophole(tag<T,N>) { return std::move(boost::pfr::detail::unsafe_declval_like< std::remove_all_extents_t<U> >()); }
+    friend auto loophole(tag<T,N>) { return std::move(boost::pfr::detail::unsafe_declval< std::remove_all_extents_t<U>& >()); }
 };
 
 
@@ -103,7 +98,7 @@ struct loophole_ubiq_lref {
     template<class U, std::size_t M, std::size_t = sizeof(loophole(tag<T,M>{})) > static char ins(int);
 
     template<class U, std::size_t = sizeof(fn_def_lref<T, U, N, sizeof(ins<U, N>(0)) == sizeof(char)>)>
-    constexpr operator U&() const noexcept; // `const` here helps to avoid ambiguity in loophole instantiations. optional_like test validate that behavior.
+    constexpr operator U&() const&& noexcept; // `const&&` here helps to avoid ambiguity in loophole instantiations. optional_like test validate that behavior.
 };
 
 template <class T, std::size_t N>
@@ -112,7 +107,7 @@ struct loophole_ubiq_rref {
     template<class U, std::size_t M, std::size_t = sizeof(loophole(tag<T,M>{})) > static char ins(int);
 
     template<class U, std::size_t = sizeof(fn_def_rref<T, U, N, sizeof(ins<U, N>(0)) == sizeof(char)>)>
-    constexpr operator U&&() const noexcept; // `const` here helps to avoid ambiguity in loophole instantiations. optional_like test validate that behavior.
+    constexpr operator U&&() const&& noexcept; // `const&&` here helps to avoid ambiguity in loophole instantiations. optional_like test validate that behavior.
 };
 
 
@@ -169,81 +164,6 @@ auto tie_as_tuple_loophole_impl(T& lvalue) noexcept {
     );
 }
 
-// Forward declarations:
-template <class T> auto tie_as_tuple_recursively(rvalue_t<T> val) noexcept;
-
-template <class T>
-auto tie_or_value(T& val, std::enable_if_t<std::is_class< std::remove_reference_t<T> >::value>* = 0) noexcept {
-    return boost::pfr::detail::tie_as_tuple_recursively(
-        boost::pfr::detail::tie_as_tuple_loophole_impl(val)
-    );
-}
-
-template <class T>
-decltype(auto) tie_or_value(T& val, std::enable_if_t<std::is_enum<std::remove_reference_t<T>>::value>* = 0) noexcept {
-    // This is compatible with the pre-loophole implementation, and tests, but IIUC it violates strict aliasing unfortunately
-    return detail::cast_to_layout_compatible<
-        std::underlying_type_t<std::remove_reference_t<T> >
-    >(val);
-#if 0
-    // This "works", in that it's usable and it doesn't violate strict aliasing.
-    // But it means we break compatibility and don't convert enum to underlying type.
-    return val;
-#endif
-}
-
-template <class T>
-auto tie_or_value(T& val, std::enable_if_t<std::is_union< std::remove_reference_t<T> >::value>* = 0) noexcept {
-    static_assert(
-        sizeof(T) && false,
-        "====================> Boost.PFR: For safety reasons it is forbidden to reflect unions. See `Reflection of unions` section in the docs for more info."
-    );
-    return 0;
-}
-
-template <class T>
-decltype(auto) tie_or_value(T& val, std::enable_if_t<!std::is_class< std::remove_reference_t<T> >::value && !std::is_enum< std::remove_reference_t<T> >::value && !std::is_union< std::remove_reference_t<T> >::value>* = 0) noexcept {
-    return val;
-}
-
-template <class T, std::size_t... I>
-auto tie_as_tuple_recursively_impl(T& tup, std::index_sequence<I...> ) noexcept
-    ->  sequence_tuple::tuple<
-            decltype(boost::pfr::detail::tie_or_value(
-                sequence_tuple::get<I>(tup)
-            ))...
-        >
-{
-    return {
-        boost::pfr::detail::tie_or_value(
-            sequence_tuple::get<I>(tup)
-        )...
-    };
-}
-
-template <class T>
-auto tie_as_tuple_recursively(rvalue_t<T> tup) noexcept {
-    using indexes = detail::make_index_sequence<T::size_v>;
-    return boost::pfr::detail::tie_as_tuple_recursively_impl(tup, indexes{});
-}
-
-template <class T>
-auto tie_as_flat_tuple(T& t) {
-    static_assert(
-        !std::is_union<T>::value,
-        "====================> Boost.PFR: For safety reasons it is forbidden to reflect unions. See `Reflection of unions` section in the docs for more info."
-    );
-    auto rec_tuples = boost::pfr::detail::tie_as_tuple_recursively(
-        boost::pfr::detail::tie_as_tuple_loophole_impl(t)
-    );
-
-    return boost::pfr::detail::make_flat_tuple_of_references(
-        rec_tuples, sequence_tuple_getter{}, size_t_<0>{}, size_t_<decltype(rec_tuples)::size_v>{}
-    );
-}
-
-
-#if !BOOST_PFR_USE_CPP17
 template <class T>
 auto tie_as_tuple(T& val) noexcept {
     static_assert(
@@ -265,8 +185,6 @@ void for_each_field_dispatcher(T& t, F&& f, std::index_sequence<I...>) {
         boost::pfr::detail::tie_as_tuple_loophole_impl(t)
     );
 }
-
-#endif // #if !BOOST_PFR_USE_CPP17
 
 }}} // namespace boost::pfr::detail
 

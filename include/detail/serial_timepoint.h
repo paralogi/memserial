@@ -20,62 +20,62 @@ namespace detail {
 /**
  *
  */
-template< typename ... Args >
-struct SerialHelpers< time_point< Args... >, std::true_type > {
-    using ValueType = time_point< Args... >;
+template< typename Clock, typename Duration >
+struct SerialType< time_point< Clock, Duration >, std::true_type > {
+    using ValueType = time_point< Clock, Duration >;
     using ClockType = typename ValueType::clock;
     using DataType = typename ValueType::duration;
 
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t value ) {
 
-        return typeHash() == hash;
+        return hash() == value;
     }
 
     /**
      *
      */
-    static constexpr uint32_t typeHash() {
+    static constexpr uint32_t hash() {
 
-        uint32_t type_hash = SERIAL_HASH_MAX;
-        typeHash( type_hash );
-        return type_hash;
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
     }
 
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
 
-        hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
-        hashCombine( hash, aggregate_traits< ClockType >::InternalIdent );
-        SerialHelpers< DataType >::typeHash( hash, nesting );
-    }
-
-    /**
-     *
-     */
-    static std::size_t byteSize( const ValueType& value ) {
-
-        return SerialHelpers< DataType >::byteSize( value.time_since_epoch() );
+        hash_combine( value, serial_traits< ValueType >::internal_ident );
+        hash_combine( value, serial_traits< ClockType >::internal_ident );
+        SerialType< DataType >::hash( value, nesting );
     }
 
     /**
      *
      */
-    template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static std::size_t size( const ValueType& value ) {
 
-        SerialHelpers< DataType >::toBytes( value.time_since_epoch(), begin, end );
+        return SerialType< DataType >::size( value.time_since_epoch() );
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+
+        SerialType< DataType >::bout( value.time_since_epoch(), begin, end );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
         DataType data;
-        SerialHelpers< DataType >::fromBytes( data, begin, end );
+        SerialType< DataType >::bin( data, begin, end );
         value = ValueType( data );
     }
 
@@ -83,12 +83,12 @@ struct SerialHelpers< time_point< Args... >, std::true_type > {
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << SerialMetatype < ValueType > ::alias().data <<
                 "< " << SerialMetatype< ClockType >::alias().data << " >: ";
 
-        SerialHelpers< DataType >::toDebug( value.time_since_epoch(), stream, level );
+        SerialType< DataType >::debug( value.time_since_epoch(), stream, level );
     }
 };
 

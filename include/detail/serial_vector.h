@@ -21,7 +21,7 @@ namespace detail {
  *
  */
 template< typename ... Args >
-struct SerialHelpers< vector< Args... >, std::true_type > {
+struct SerialType< vector< Args... >, is_primitive< typename vector< Args... >::value_type > > {
     using ValueType = vector< Args... >;
     using SizeType = uint32_t;
     using DataType = typename ValueType::value_type;
@@ -29,87 +29,75 @@ struct SerialHelpers< vector< Args... >, std::true_type > {
     /**
      *
      */
-    static constexpr bool matchHash( uint32_t hash ) {
+    static constexpr bool match( uint32_t value ) {
 
-        return typeHash() == hash;
-    }
-
-
-    /**
-     *
-     */
-    static constexpr uint32_t typeHash() {
-
-        uint32_t type_hash = SERIAL_HASH_MAX;
-        typeHash( type_hash );
-        return type_hash;
-    }
-
-    static constexpr void typeHash( uint32_t& hash, std::size_t nesting = SERIAL_NESTING_MAX ) {
-
-        hashCombine( hash, aggregate_traits< ValueType >::InternalIdent );
-        SerialHelpers< SizeType >::typeHash( hash, nesting );
-        SerialHelpers< DataType >::typeHash( hash, nesting );
+        return hash() == value;
     }
 
     /**
      *
      */
-    static std::size_t byteSize( const ValueType& value ) {
+    static constexpr uint32_t hash() {
+
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
+    }
+
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
+
+        hash_combine( value, serial_traits< ValueType >::internal_ident );
+        SerialType< SizeType >::hash( value, nesting );
+        SerialType< DataType >::hash( value, nesting );
+    }
+
+    /**
+     *
+     */
+    static std::size_t size( const ValueType& value ) {
 
         assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
 
-        std::size_t byte_size = sizeof( SizeType );
-        for ( const auto& data : value )
-            byte_size += SerialHelpers< DataType >::byteSize( data );
-
-        return byte_size;
+        return sizeof( SizeType ) + sizeof( DataType ) * value.size();;
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void toBytes( const ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( byteSize( value ) ) <= std::distance( begin, end ) );
+        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
 
-        auto size_size = sizeof( SizeType );
-        auto data_size = SizeType( value.size() );
-        auto raw_size = reinterpret_cast< const char* >( &data_size );
-        begin = std::copy_n( raw_size, size_size, begin );
-
-        for ( const auto& data : value )
-            SerialHelpers< DataType >::toBytes( data, begin, end );
+        SizeType data_size = value.size();
+        begin.bout( data_size );
+        begin.bout( &value[ 0 ], data_size );
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void fromBytes( ValueType& value, Iterator&& begin, Iterator&& end ) {
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        auto size_size = sizeof( SizeType );
-        if ( std::ptrdiff_t( size_size ) > std::distance( begin, end ) )
+        if ( std::ptrdiff_t( sizeof( SizeType ) ) > std::distance( begin, end ) )
             throw SerialException( SerialException::ExcOutOfRange );
 
         SizeType data_size;
-        auto raw_size = reinterpret_cast< char* >( &data_size );
-        std::copy_n( begin, size_size, raw_size );
-        begin += size_size;
+        begin.bin( data_size );
 
-        if ( data_size > 0 ) {
-            value.resize( data_size );
-            for ( auto& data : value )
-                SerialHelpers< DataType >::fromBytes( data, begin, end );
-        }
+        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
+            throw SerialException( SerialException::ExcOutOfRange );
+
+        value.resize( data_size );
+        begin.bin( &value[ 0 ], data_size );
     }
 
     /**
      *
      */
     template< typename Stream >
-    static void toDebug( const ValueType& value, Stream&& stream, uint8_t level ) {
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
 
         stream << SerialMetatype< ValueType >::alias().data <<
                 "< " << SerialMetatype< DataType >::alias().data <<
@@ -120,24 +108,122 @@ struct SerialHelpers< vector< Args... >, std::true_type > {
             return;
         }
 
-        if ( is_primitive< DataType >::value ) {
-            std::string separator = std::string( ", " );
+        std::string separator = std::string( ", " );
 
-            for ( std::size_t index = 0; index < value.size(); ++index ) {
-                if ( index > 0 )
-                    stream << separator.c_str();
-                SerialHelpers< DataType >::toDebug( value[ index ], stream, level + 1 );
-            }
+        for ( std::size_t index = 0; index < value.size(); ++index ) {
+            if ( index > 0 )
+                stream << separator.c_str();
+            SerialType< DataType >::debug( value[ index ], stream, level + 1 );
+        }
+    }
+};
+
+/**
+ *
+ */
+template< typename ... Args >
+struct SerialType< vector< Args... >, is_class< typename vector< Args... >::value_type > > {
+    using ValueType = vector< Args... >;
+    using SizeType = uint32_t;
+    using DataType = typename ValueType::value_type;
+
+    /**
+     *
+     */
+    static constexpr bool match( uint32_t value ) {
+
+        return hash() == value;
+    }
+
+    /**
+     *
+     */
+    static constexpr uint32_t hash() {
+
+        uint32_t real_hash = SERIAL_HASH_SALT;
+        hash( real_hash );
+        return real_hash;
+    }
+
+    static constexpr void hash( uint32_t& value, std::size_t nesting = SERIAL_NESTING_LIMIT ) {
+
+        hash_combine( value, serial_traits< ValueType >::internal_ident );
+        SerialType< SizeType >::hash( value, nesting );
+        SerialType< DataType >::hash( value, nesting );
+    }
+
+    /**
+     *
+     */
+    static std::size_t size( const ValueType& value ) {
+
+        assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
+
+        std::size_t byte_size = sizeof( SizeType );
+
+        for ( const auto& data : value )
+            byte_size += SerialType< DataType >::size( data );
+
+        return byte_size;
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+
+        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
+
+        SizeType data_size = value.size();
+        begin.bout( data_size );
+
+        for ( const auto& data : value )
+            SerialType< DataType >::bout( data, begin, end );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+
+        if ( std::ptrdiff_t( sizeof( SizeType ) ) > std::distance( begin, end ) )
+            throw SerialException( SerialException::ExcOutOfRange );
+
+        SizeType data_size;
+        begin.bin( data_size );
+
+        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
+            throw SerialException( SerialException::ExcOutOfRange );
+
+        value.resize( data_size );
+
+        for ( auto& data : value )
+            SerialType< DataType >::bin( data, begin, end );
+    }
+
+    /**
+     *
+     */
+    template< typename Stream >
+    static void debug( const ValueType& value, Stream& stream, uint8_t level ) {
+
+        stream << SerialMetatype< ValueType >::alias().data <<
+                "< " << SerialMetatype< DataType >::alias().data <<
+                " >[" << value.size() << "]: ";
+
+        if ( value.empty() ) {
+            stream << "empty";
+            return;
         }
 
-        else {
-            std::string separator( 3 * ( level + 1 ) + 1, ' ' );
-            separator[ 0 ] = '\n';
+        std::string separator( 3 * ( level + 1 ) + 1, ' ' );
+        separator[ 0 ] = '\n';
 
-            for ( std::size_t index = 0; index < value.size(); ++index ) {
-                stream << separator.c_str() << index << ": ";
-                SerialHelpers< DataType >::toDebug( value[ index ], stream, level + 1 );
-            }
+        for ( std::size_t index = 0; index < value.size(); ++index ) {
+            stream << separator.c_str() << index << ": ";
+            SerialType< DataType >::debug( value[ index ], stream, level + 1 );
         }
     }
 };

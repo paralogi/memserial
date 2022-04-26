@@ -26,7 +26,7 @@ struct ReducedHashFunctor {
     template< std::size_t Index >
     constexpr void operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        hashReduce( hash, SerialMetatype< ValueType >::hash().fullHash() );
+        hash_reduce( hash, SerialMetatype< ValueType >::hash().full() );
     }
 };
 
@@ -39,30 +39,36 @@ struct PerfectHashFunctor {
     template< std::size_t Index >
     constexpr void operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        hash[ Index ] = SerialMetatype< ValueType >::hash().fullHash();
+        hash[ Index ] = SerialMetatype< ValueType >::hash().full();
     }
 };
 
 /**
  *
  */
-static uint64_t reducedHash() {
+static uint64_t reduced_hash() {
 
     uint64_t hash = 0;
     ReducedHashFunctor functor{ hash };
-    foreachSerial( functor );
+    foreach_serial( functor );
     return hash;
 }
 
 /**
  *
  */
-static std::vector< uint64_t > perfectHash() {
+static std::vector< uint64_t > perfect_hash() {
 
-    std::vector< uint64_t > hash( countSerial() );
+    std::vector< uint64_t > hash( count_serial() );
     PerfectHashFunctor functor{ hash };
-    foreachSerial( functor );
+    foreach_serial( functor );
     return hash;
 }
+
+/**
+ *
+ */
+extern const uint64_t reduced_hash_static = memserial::detail::reduced_hash();
+extern const std::vector< uint64_t > perfect_hash_static = memserial::detail::perfect_hash();
 
 }} // --- namespace

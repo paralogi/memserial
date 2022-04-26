@@ -20,37 +20,6 @@ namespace memserial {
 
 /**
  * \~english
- * \brief Returns the current version of serialization methods and serializable types.
- * \return Version number.
- * \~russian
- * \brief Возвращает актуальную версию методов сериализации и сериализуемых типов.
- * \return Номер версии.
- */
-uint64_t serialVersion();
-
-/**
- * \~english
- * \brief Checks the version relevance of serialization methods and serializable types for current build.
- * \return Sign of relevance.
- * \~russian
- * \brief Проверяет актуальность версии методов сериализации и сериализуемых типов для текущей сборки.
- * \return Признак актуальности.
- */
-bool checkVersion();
-
-/**
- * \~english
- * \brief Checks the version relevance of serializable type for current build.
- * \return Sign of relevance.
- * \~russian
- * \brief Проверяет актуальность версии сериализуемого типа для текущей сборки.
- * \return Признак актуальности.
- */
-template< typename T >
-bool checkVersion();
-
-/**
- * \~english
  * \brief Returns structured data in serialized form.
  * \param value Original data structure.
  * \return Byte sequence represented by the original structure.
@@ -74,7 +43,7 @@ ByteArray serialize( const T& value );
  * \return Исходная структура данных, восстановленная из набора байт.
  * \throw SerialException В случае некорректных данных.
  */
-template< typename T, typename ByteArray >
+template< typename T, typename ByteArray = std::string >
 T parse( const ByteArray& bytes );
 
 /**
@@ -98,8 +67,7 @@ uint64_t ident();
  * \param alias Строковое имя типа.
  * \return Идентификатор типа или -1, если имя не найдено.
  */
-template< typename ByteArray >
-uint64_t ident( const ByteArray& alias );
+uint64_t ident( const std::string& alias );
 
 /**
  * \~english
@@ -109,8 +77,8 @@ uint64_t ident( const ByteArray& alias );
  * \brief Возвращает имя сериализуемого типа.
  * \return Строковое имя типа.
  */
-template< typename T, typename ByteArray = std::string >
-ByteArray alias();
+template< typename T >
+std::string alias();
 
 /**
  * \~english
@@ -122,33 +90,6 @@ ByteArray alias();
  * \param ident Идентификатор типа.
  * \return Строковое имя типа или пустая строка, если идентификатор не найден.
  */
-template< typename ByteArray = std::string >
-ByteArray alias( uint64_t ident );
-
-/**
- * \~english
- * \brief Prints structured data in human-readable format.
- * \param stream Class object for streaming output.
- * \param value Original data structure.
- * \~russian
- * \brief Печатает структуру данных в человекочитаемом формате.
- * \param stream Объект класса для потокового вывода.
- * \param value Исходная структура данных.
- */
-template< typename Stream, typename T >
-void print( Stream&& stream, const T& value );
-
-/**
- * \~english
- * \brief Prints serialized data in human-readable format.
- * \param stream Class object for streaming output.
- * \param bytes Byte sequence.
- * \~russian
- * \brief Печатает сериализованные данные в человекочитаемом формате.
- * \param stream Объект класса для потокового вывода.
- * \param bytes Последовательность байт.
- */
-template< typename Stream, typename ByteArray >
-void trace( Stream&& stream, const ByteArray& bytes );
+std::string alias( uint64_t ident );
 
 } // --- namespace
