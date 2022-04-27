@@ -58,7 +58,7 @@ struct SerialType< vector< Args... >, is_primitive< typename vector< Args... >::
 
         assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
 
-        return sizeof( SizeType ) + sizeof( DataType ) * value.size();;
+        return sizeof( SizeType ) + sizeof( DataType ) * value.size();
     }
 
     /**
@@ -173,7 +173,7 @@ struct SerialType< vector< Args... >, is_class< typename vector< Args... >::valu
     template< typename Iterator >
     static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
+        assert( std::ptrdiff_t( sizeof( SizeType ) ) <= std::distance( begin, end ) );
 
         SizeType data_size = value.size();
         begin.bout( data_size );
@@ -193,9 +193,6 @@ struct SerialType< vector< Args... >, is_class< typename vector< Args... >::valu
 
         SizeType data_size;
         begin.bin( data_size );
-
-        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
 
         value.resize( data_size );
 

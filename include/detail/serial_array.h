@@ -166,8 +166,6 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
     template< typename Iterator >
     static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
-
         for ( const auto& data : value )
             SerialType< DataType >::bout( data, begin, end );
     }
@@ -177,9 +175,6 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
      */
     template< typename Iterator >
     static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
-
-        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
 
         for ( auto& data : value )
             SerialType< DataType >::bin( data, begin, end );
