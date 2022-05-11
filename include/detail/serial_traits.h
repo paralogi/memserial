@@ -85,42 +85,37 @@ struct size_t_ : std::integral_constant< std::size_t, Index > {};
 /**
  *
  */
-template< typename T >
-struct endian_traits : std::true_type {
-    static constexpr SerialEndian internal_endian = DefaultEndian;
-};
-
-template< typename ByteArray, SerialEndian endian >
-struct endian_traits< SerialStorage< ByteArray, endian > >: std::false_type {
+template< SerialEndian endian, std::size_t size = 0 >
+struct endian_traits : std::false_type {
     static constexpr SerialEndian internal_endian = endian;
 };
 
-template< typename ByteArray, SerialEndian endian >
-struct endian_traits< SerialWrapper< ByteArray, endian > >: std::false_type {
-    static constexpr SerialEndian internal_endian = endian;
+template< SerialEndian endian >
+struct endian_traits< endian, 1 > : std::false_type {
+    static constexpr SerialEndian internal_endian = NativeEndian;
+};
+
+template< std::size_t size >
+struct endian_traits< SERIAL_NATIVE_ENDIAN, size > : std::false_type {
+    static constexpr SerialEndian internal_endian = NativeEndian;
+};
+
+template<>
+struct endian_traits< SERIAL_NATIVE_ENDIAN, 1 > : std::false_type {
+    static constexpr SerialEndian internal_endian = NativeEndian;
 };
 
 /**
  *
  */
-template< SerialEndian endian, std::size_t size, typename = std::true_type >
+template< typename T, typename = std::true_type >
 struct rebind_endian {
-    static constexpr SerialEndian internal_endian = endian;
+    static constexpr SerialEndian internal_endian = endian_traits< DefaultEndian >::internal_endian;
 };
 
-template< SerialEndian endian >
-struct rebind_endian< endian, 1, std::true_type > {
-    static constexpr SerialEndian internal_endian = NativeEndian;
-};
-
-template< std::size_t size >
-struct rebind_endian< SERIAL_NATIVE_ENDIAN, size, std::true_type > {
-    static constexpr SerialEndian internal_endian = NativeEndian;
-};
-
-template<>
-struct rebind_endian< SERIAL_NATIVE_ENDIAN, 1, std::true_type > {
-    static constexpr SerialEndian internal_endian = NativeEndian;
+template< typename ByteArray, SerialEndian endian >
+struct rebind_endian< SerialWrapper< ByteArray, endian >, std::true_type > {
+    static constexpr SerialEndian internal_endian = endian_traits< endian >::internal_endian;
 };
 
 /**

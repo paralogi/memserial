@@ -148,9 +148,9 @@ struct SerialMetatype {
     static constexpr SerialAlias alias() { return "undefined"; }
     static constexpr SerialHash hash() { return SERIAL_HASH_SALT; }
 
-    template< typename ByteArray, typename Iterator >
+    template< SerialEndian endian, typename Iterator >
     static constexpr auto iterator( const Iterator& i ) {
-        return SerialIterator< ByteArray, Iterator >( i );
+        return SerialIterator< endian, Iterator >( i );
     }
 };
 
@@ -161,9 +161,9 @@ struct SerialMetatype< nulltype > {
     static constexpr SerialAlias alias() { return "nulltype"; }
     static constexpr SerialHash hash() { return { alias().hash(), SERIAL_HASH_SALT }; }
 
-    template< typename ByteArray, typename Iterator >
+    template< SerialEndian endian, typename Iterator >
     static constexpr auto iterator( const Iterator& i ) {
-        return SerialIterator< ByteArray, Iterator >( i );
+        return SerialIterator< endian, Iterator >( i );
     }
 };
 
@@ -311,9 +311,9 @@ struct SerialMetatype< Type > { \
     static constexpr SerialAlias alias() { return UNPACK( Type ); } \
     static constexpr SerialHash hash() { return { alias().hash(), SerialType< Type >::hash() }; } \
     \
-    template< typename ByteArray, typename Iterator > \
+    template< SerialEndian endian, typename Iterator > \
     static constexpr auto iterator( const Iterator& i ) { \
-        return SerialIterator< ByteArray, Iterator >( i ); \
+        return SerialIterator< endian, Iterator >( i ); \
     } \
 }; \
 }}

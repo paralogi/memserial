@@ -41,42 +41,14 @@ enum SerialEndian {
 
 /**
  * \~english
- * \brief The helper class used in 'serialize'.
+ * \brief The helper class used in serialization methods.
  * \~russian
- * \brief Вспомогательный класс, используемый в 'serialize'.
+ * \brief Вспомогательный класс, используемый в методах сериализации.
  */
 template< typename ByteArray, SerialEndian endian = DefaultEndian >
-struct SerialStorage : ByteArray {
-    static constexpr SerialEndian storage_endian = endian;
-};
-
-template< SerialEndian endian = DefaultEndian >
-using StringStorage = SerialStorage< std::string, endian >;
-
-/**
- * \~english
- * \brief The helper class used in 'parse' and 'trace'.
- * \~russian
- * \brief Вспомогательный класс, используемый в 'parse' и 'trace'.
- */
-template< typename ByteArray, SerialEndian endian = DefaultEndian >
-struct SerialWrapper {
-    using const_iterator = typename ByteArray::const_iterator;
-    static constexpr SerialEndian storage_endian = endian;
-
-    const ByteArray& bytes;
-
-    operator const ByteArray&() const {
-        return bytes;
-    }
-
-    const_iterator begin() const {
-        return bytes.begin();
-    }
-
-    const_iterator end() const {
-        return bytes.end();
-    }
+struct SerialWrapper : ByteArray {
+    using type = ByteArray;
+    static constexpr SerialEndian order = endian;
 };
 
 template< SerialEndian endian = DefaultEndian >

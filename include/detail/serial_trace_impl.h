@@ -22,9 +22,11 @@ namespace detail {
  */
 template< typename Stream, typename ByteArray >
 struct TraceFunctor {
+    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
+
     Stream& stream;
-    SerialIteratorConstAlias< ByteArray >& begin;
-    SerialIteratorConstAlias< ByteArray >& end;
+    HashIteratorType& begin;
+    HashIteratorType& end;
     uint64_t hash;
 
     template< std::size_t Index >
@@ -32,8 +34,8 @@ struct TraceFunctor {
         using ValueType = typename SerialIdentity< Index >::ValueType;
         if ( SerialMetatype< ValueType >::hash().full() != hash )
             return false;
-        auto serial_begin = SerialMetatype< ValueType >::template iterator< ByteArray >( begin );
-        auto serial_end = SerialMetatype< ValueType >::template iterator< ByteArray >( end );
+        auto serial_begin = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( begin );
+        auto serial_end = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( end );
         ValueType value{};
         SerialType< ValueType >::bin( value, serial_begin, serial_end );
         SerialType< ValueType >::debug( value, stream, 0 );

@@ -89,8 +89,8 @@ ByteArray serialize( const T& value ) {
 
     SerialType< uint64_t >::bout( SerialMetatype< T >::hash().full(), hash_begin, hash_end );
 
-    auto serial_begin = SerialMetatype< T >::template iterator< ByteArray >( hash_begin );
-    auto serial_end = SerialMetatype< T >::template iterator< ByteArray >( hash_end );
+    auto serial_begin = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_begin );
+    auto serial_end = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_end );
 
     SerialType< T >::bout( value, serial_begin, serial_end );
     return bytes;
@@ -126,8 +126,8 @@ T parse( const ByteArray& bytes ) {
         throw SerialException( SerialException::ExcBinaryIncompatible );
     }
 
-    auto serial_begin = SerialMetatype< T >::template iterator< ByteArray >( hash_begin );
-    auto serial_end = SerialMetatype< T >::template iterator< ByteArray >( hash_end );
+    auto serial_begin = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_begin );
+    auto serial_end = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_end );
 
     T value;
     SerialType< T >::bin( value, serial_begin, serial_end );
@@ -183,9 +183,9 @@ std::string alias( uint64_t ident ) {
 
 #define SERIALIALIZE( Type, ByteArray ) \
 template ByteArray serialize< ByteArray, Type >( const Type& ); \
-template SerialStorage< ByteArray, BigEndian > serialize< SerialStorage< ByteArray, BigEndian >, Type >( const Type& ); \
-template SerialStorage< ByteArray, LittleEndian > serialize< SerialStorage< ByteArray, LittleEndian >, Type >( const Type& ); \
-template SerialStorage< ByteArray, NativeEndian > serialize< SerialStorage< ByteArray, NativeEndian >, Type >( const Type& );
+template SerialWrapper< ByteArray, BigEndian > serialize< SerialWrapper< ByteArray, BigEndian >, Type >( const Type& ); \
+template SerialWrapper< ByteArray, LittleEndian > serialize< SerialWrapper< ByteArray, LittleEndian >, Type >( const Type& ); \
+template SerialWrapper< ByteArray, NativeEndian > serialize< SerialWrapper< ByteArray, NativeEndian >, Type >( const Type& );
 
 #define SERIAL_PARSE( Type, ByteArray ) \
 template Type parse< Type, ByteArray >( const ByteArray& ); \

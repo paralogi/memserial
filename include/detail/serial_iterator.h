@@ -20,9 +20,9 @@ namespace detail {
 /**
  *
  */
-template< typename ByteArray, typename Iterator >
+template< SerialEndian endian, typename Iterator >
 struct SerialIterator : Iterator {
-    static constexpr SerialEndian storage_endian = endian_traits< ByteArray >::internal_endian;
+    static constexpr SerialEndian order = endian;
 
     SerialIterator( const Iterator& iterator ) :
             Iterator( iterator ) {
@@ -47,10 +47,10 @@ struct SerialIterator : Iterator {
 
 
 template< typename ByteArray >
-using SerialIteratorAlias = SerialIterator< ByteArray, typename ByteArray::iterator >;
+using SerialIteratorAlias = SerialIterator< rebind_endian< ByteArray >::internal_endian, typename ByteArray::iterator >;
 
 template< typename ByteArray >
-using SerialIteratorConstAlias = SerialIterator< ByteArray, typename ByteArray::const_iterator >;
+using SerialIteratorConstAlias = SerialIterator< rebind_endian< ByteArray >::internal_endian, typename ByteArray::const_iterator >;
 
 /**
  *
@@ -114,32 +114,32 @@ struct iterator_traits< NativeEndian > {
 /**
  *
  */
-template< typename ByteArray, typename Iterator >
+template< SerialEndian endian, typename Iterator >
 template< typename ValueType >
-void SerialIterator< ByteArray, Iterator >::bin( ValueType& value ) {
-    constexpr auto endian = rebind_endian< storage_endian, sizeof( ValueType ) >::internal_endian;
-    iterator_traits< endian >::bin( value, *this );
+void SerialIterator< endian, Iterator >::bin( ValueType& value ) {
+    constexpr auto internal_endian = endian_traits< endian, sizeof( ValueType ) >::internal_endian;
+    iterator_traits< internal_endian >::bin( value, *this );
 }
 
-template< typename ByteArray, typename Iterator >
+template< SerialEndian endian, typename Iterator >
 template< typename ValueType >
-void SerialIterator< ByteArray, Iterator >::bin( ValueType* value, std::size_t size ) {
-    constexpr auto endian = rebind_endian< storage_endian, sizeof( ValueType ) >::internal_endian;
-    iterator_traits< endian >::bin( value, size, *this );
+void SerialIterator< endian, Iterator >::bin( ValueType* value, std::size_t size ) {
+    constexpr auto internal_endian = endian_traits< endian, sizeof( ValueType ) >::internal_endian;
+    iterator_traits< internal_endian >::bin( value, size, *this );
 }
 
-template< typename ByteArray, typename Iterator >
+template< SerialEndian endian, typename Iterator >
 template< typename ValueType >
-void SerialIterator< ByteArray, Iterator >::bout( const ValueType& value ) {
-    constexpr auto endian = rebind_endian< storage_endian, sizeof( ValueType ) >::internal_endian;
-    iterator_traits< endian >::bout( value, *this );
+void SerialIterator< endian, Iterator >::bout( const ValueType& value ) {
+    constexpr auto internal_endian = endian_traits< endian, sizeof( ValueType ) >::internal_endian;
+    iterator_traits< internal_endian >::bout( value, *this );
 }
 
-template< typename ByteArray, typename Iterator >
+template< SerialEndian endian, typename Iterator >
 template< typename ValueType >
-void SerialIterator< ByteArray, Iterator >::bout( const ValueType* value, std::size_t size ) {
-    constexpr auto endian = rebind_endian< storage_endian, sizeof( ValueType ) >::internal_endian;
-    iterator_traits< endian >::bout( value, size, *this );
+void SerialIterator< endian, Iterator >::bout( const ValueType* value, std::size_t size ) {
+    constexpr auto internal_endian = endian_traits< endian, sizeof( ValueType ) >::internal_endian;
+    iterator_traits< internal_endian >::bout( value, size, *this );
 }
 
 }} // --- namespace
