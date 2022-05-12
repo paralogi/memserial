@@ -34,9 +34,9 @@ struct TraceFunctor {
         using ValueType = typename SerialIdentity< Index >::ValueType;
         if ( SerialMetatype< ValueType >::hash().full() != hash )
             return false;
+        ValueType value{};
         auto serial_begin = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( begin );
         auto serial_end = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( end );
-        ValueType value{};
         SerialType< ValueType >::bin( value, serial_begin, serial_end );
         SerialType< ValueType >::debug( value, stream, 0 );
         return true;
@@ -64,13 +64,12 @@ void trace( const ByteArray& bytes, Stream&& stream ) {
     using detail::SerialType;
     using detail::TraceFunctor;
     using StreamType = typename std::remove_reference< Stream >::type;
+    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
 
     try {
-        using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
+        uint64_t hash;
         HashIteratorType hash_begin( bytes.begin() );
         HashIteratorType hash_end( bytes.end() );
-
-        uint64_t hash;
         SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
 
         TraceFunctor< StreamType, ByteArray > functor{ stream, hash_begin, hash_end, hash };

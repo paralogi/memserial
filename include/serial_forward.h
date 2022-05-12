@@ -51,6 +51,7 @@
 #define SERIAL_HASH_SALT 0xffffffff
 #endif
 
+#include "serial_view.h"
 #include "serial_endian.h"
 #include "serial_exception.h"
 #include "detail/serial_intrinsic.h"
@@ -131,19 +132,26 @@ SERIAL_INFO( PACK( Type ) )
 #define SERIAL_INFO( Type ) \
 namespace memserial { \
 SERIALIALIZE( PACK( Type ), std::string ) \
+SERIALIALIZE( PACK( Type ), SerialView ) \
 SERIALIALIZE( PACK( Type ), QByteArray ) \
 SERIAL_PARSE( PACK( Type ), std::string ) \
+SERIAL_PARSE( PACK( Type ), SerialView ) \
 SERIAL_PARSE( PACK( Type ), QByteArray ) \
 SERIAL_PRINT( PACK( Type ), std::ostream ) \
 SERIAL_PRINT( PACK( Type ), QDebug ) \
+SERIAL_SIZE( PACK( Type ) ) \
 SERIAL_IDENT( PACK( Type ) ) \
 SERIAL_ALIAS( PACK( Type ) ) \
 SERIAL_VERSION( PACK( Type ) ) \
 }
 
-#define SERIAL_TRACE_INFO \
+#define SERIAL_INFO_COMMON \
 namespace memserial { \
+SERIAL_HASH( std::string ) \
+SERIAL_HASH( SerialView ) \
+SERIAL_HASH( QByteArray ) \
 SERIAL_TRACE( std::string, std::ostream ) \
+SERIAL_TRACE( SerialView, std::ostream ) \
 SERIAL_TRACE( QByteArray, QDebug ) \
 QDebug operator<<( QDebug dbg, long double value ) { \
     dbg << double( value ); \
@@ -156,16 +164,22 @@ QDebug operator<<( QDebug dbg, long double value ) { \
 #define SERIAL_INFO( Type ) \
 namespace memserial { \
 SERIALIALIZE( PACK( Type ), std::string ) \
+SERIALIALIZE( PACK( Type ), SerialView ) \
 SERIAL_PARSE( PACK( Type ), std::string ) \
+SERIAL_PARSE( PACK( Type ), SerialView ) \
 SERIAL_PRINT( PACK( Type ), std::ostream ) \
+SERIAL_SIZE( PACK( Type ) ) \
 SERIAL_IDENT( PACK( Type ) ) \
 SERIAL_ALIAS( PACK( Type ) ) \
 SERIAL_VERSION( PACK( Type ) ) \
 }
 
-#define SERIAL_TRACE_INFO \
+#define SERIAL_INFO_COMMON \
 namespace memserial { \
+SERIAL_HASH( std::string ) \
+SERIAL_HASH( SerialView ) \
 SERIAL_TRACE( std::string, std::ostream ) \
+SERIAL_TRACE( SerialView, std::ostream ) \
 }
 
 #endif
@@ -176,6 +190,14 @@ SERIAL_TRACE( std::string, std::ostream ) \
 
 #if !defined( SERIAL_PARSE )
 #define SERIAL_PARSE( Type, ByteArray )
+#endif
+
+#if !defined( SERIAL_SIZE )
+#define SERIAL_SIZE( Type )
+#endif
+
+#if !defined( SERIAL_HASH )
+#define SERIAL_HASH( ByteArray )
 #endif
 
 #if !defined( SERIAL_IDENT )
@@ -200,4 +222,4 @@ SERIAL_TRACE( std::string, std::ostream ) \
 
 using memserial::detail::nulltype;
 SERIAL_INFO( nulltype )
-SERIAL_TRACE_INFO
+SERIAL_INFO_COMMON

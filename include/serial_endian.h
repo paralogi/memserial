@@ -46,7 +46,8 @@ enum SerialEndian {
  * \brief Вспомогательный класс, используемый в методах сериализации.
  */
 template< typename ByteArray, SerialEndian endian = DefaultEndian >
-struct SerialWrapper : ByteArray {
+class SerialWrapper : public ByteArray {
+public:
     using type = ByteArray;
     static constexpr SerialEndian order = endian;
 };

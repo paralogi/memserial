@@ -146,7 +146,7 @@ template< typename T >
 struct SerialMetatype {
     static constexpr bool serial() { return false; }
     static constexpr SerialAlias alias() { return "undefined"; }
-    static constexpr SerialHash hash() { return SERIAL_HASH_SALT; }
+    static constexpr SerialHash hash() { return 0; }
 
     template< SerialEndian endian, typename Iterator >
     static constexpr auto iterator( const Iterator& i ) {
