@@ -28,6 +28,10 @@ struct SerialIterator : Iterator {
             Iterator( iterator ) {
     }
 
+    SerialIterator( const typename Iterator::iterator_type& iterator ) :
+            Iterator( iterator ) {
+    }
+
     auto operator&() {
         return &( *this )[ 0 ];
     }
@@ -44,13 +48,6 @@ struct SerialIterator : Iterator {
     template< typename ValueType >
     void bout( const ValueType* value, std::size_t size );
 };
-
-
-template< typename ByteArray >
-using SerialIteratorAlias = SerialIterator< rebind_endian< ByteArray >::internal_endian, typename ByteArray::iterator >;
-
-template< typename ByteArray >
-using SerialIteratorConstAlias = SerialIterator< rebind_endian< ByteArray >::internal_endian, typename ByteArray::const_iterator >;
 
 /**
  *
@@ -114,6 +111,24 @@ struct iterator_traits< NativeEndian > {
 /**
  *
  */
+template< typename Iterator, typename = std::true_type >
+struct rebind_iterator {
+    using iterator = Iterator;
+};
+
+template<>
+struct rebind_iterator< char*, std::true_type > {
+    using iterator = typename std::string::iterator;
+};
+
+template<>
+struct rebind_iterator< const char*, std::true_type > {
+    using iterator = typename std::string::const_iterator;
+};
+
+/**
+ *
+ */
 template< SerialEndian endian, typename Iterator >
 template< typename ValueType >
 void SerialIterator< endian, Iterator >::bin( ValueType& value ) {
@@ -141,5 +156,15 @@ void SerialIterator< endian, Iterator >::bout( const ValueType* value, std::size
     constexpr auto internal_endian = endian_traits< endian, sizeof( ValueType ) >::internal_endian;
     iterator_traits< internal_endian >::bout( value, size, *this );
 }
+
+template< typename ByteArray >
+using SerialIteratorAlias = SerialIterator<
+        rebind_endian< ByteArray >::internal_endian,
+        typename rebind_iterator< typename ByteArray::iterator >::iterator >;
+
+template< typename ByteArray >
+using SerialIteratorConstAlias = SerialIterator<
+        rebind_endian< ByteArray >::internal_endian,
+        typename rebind_iterator< typename ByteArray::const_iterator >::iterator >;
 
 }} // --- namespace

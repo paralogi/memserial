@@ -17,11 +17,56 @@
 namespace memserial {
 namespace detail {
 
-static uint64_t reduced_hash();
-static std::vector< uint64_t > perfect_hash();
-
 extern const uint64_t reduced_hash_static;
 extern const std::vector< uint64_t > perfect_hash_static;
+
+/**
+ *
+ */
+struct ReducedHashFunctor {
+    uint64_t& hash;
+
+    template< std::size_t Index >
+    constexpr void operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        hash_reduce( hash, serial_hash< ValueType >() );
+    }
+};
+
+/**
+ *
+ */
+struct PerfectHashFunctor {
+    std::vector< uint64_t >& hash;
+
+    template< std::size_t Index >
+    constexpr void operator()( size_t_< Index > ) {
+        using ValueType = typename SerialIdentity< Index >::ValueType;
+        hash[ Index ] = serial_hash< ValueType >();
+    }
+};
+
+/**
+ *
+ */
+static uint64_t reduced_hash() {
+
+    uint64_t hash = 0;
+    ReducedHashFunctor functor{ hash };
+    foreach_serial( functor );
+    return hash;
+}
+
+/**
+ *
+ */
+static std::vector< uint64_t > perfect_hash() {
+
+    std::vector< uint64_t > hash( count_serial() );
+    PerfectHashFunctor functor{ hash };
+    foreach_serial( functor );
+    return hash;
+}
 
 } // --- namespace
 
@@ -47,9 +92,8 @@ bool checkVersion() {
 template< typename T >
 bool checkVersion() {
 
-    using detail::SerialMetatype;
     return std::find( begin( detail::perfect_hash_static ), end( detail::perfect_hash_static ),
-            SerialMetatype< T >::hash().full() ) != std::end( detail::perfect_hash_static );
+            detail::serial_hash< T >() ) != std::end( detail::perfect_hash_static );
 }
 
 } // --- namespace

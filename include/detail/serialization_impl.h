@@ -39,15 +39,15 @@ struct MatchFunctor {
  *
  */
 struct HashFunctor {
-    uint64_t& hash;
+    uint64_t hash;
     const std::string& alias;
 
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        if ( !SerialMetatype< ValueType >::alias().equal( alias.data(), alias.size() ) )
+        if ( serial_alias< ValueType >() != alias )
             return false;
-        hash = SerialMetatype< ValueType >::hash().full();
+        hash = serial_hash< ValueType >();
         return true;
     }
 };
@@ -56,15 +56,15 @@ struct HashFunctor {
  *
  */
 struct AliasFunctor {
-    std::string& alias;
+    std::string alias;
     uint64_t hash;
 
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        if ( SerialMetatype< ValueType >::hash().full() != hash )
+        if ( serial_hash< ValueType >() != hash )
             return false;
-        alias = SerialAlias{ SerialMetatype< ValueType >::alias() }.convert< std::string >();
+        alias = serial_alias< ValueType >();
         return true;
     }
 };
@@ -91,13 +91,11 @@ void serialize( ByteArray& bytes, const T& value ) {
 
     using detail::SerialMetatype;
     using detail::SerialType;
-    using detail::SerialHash;
-    using HashIteratorType = detail::SerialIteratorAlias< ByteArray >;
 
-    uint64_t hash = SerialHash( SerialMetatype< T >::hash().head(), SerialType< T >::hash() ).full();
+    using HashIteratorType = detail::SerialIteratorAlias< ByteArray >;
     HashIteratorType hash_begin( bytes.begin() );
     HashIteratorType hash_end( bytes.end() );
-    SerialType< uint64_t >::bout( hash, hash_begin, hash_end );
+    SerialType< uint64_t >::bout( detail::serial_hash< T >(), hash_begin, hash_end );
 
     auto serial_begin = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_begin );
     auto serial_end = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_end );
@@ -124,21 +122,20 @@ void parse( T& value, const ByteArray& bytes ) {
     using detail::SerialMetatype;
     using detail::SerialType;
     using detail::SerialHash;
-    using detail::MatchFunctor;
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
 
     uint64_t hash;
+    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
     HashIteratorType hash_begin( bytes.begin() );
     HashIteratorType hash_end( bytes.end() );
     SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
 
-    if ( SerialMetatype< T >::hash().head() != SerialHash( hash ).head() ) {
-        MatchFunctor functor{ false, SerialType< T >::hash(), SerialHash( hash ).body() };
+    if ( SerialMetatype< T >::alias().hash() != SerialHash( hash ).head() ) {
+        detail::MatchFunctor functor{ false, SerialType< T >::hash(), SerialHash( hash ).tail() };
         if ( !search_serial( functor ) || !functor.match_result )
             throw SerialException( SerialException::ExcTypeMissmatch );
     }
 
-    else if ( SerialType< T >::hash() != SerialHash( hash ).body() ) {
+    else if ( SerialType< T >::hash() != SerialHash( hash ).tail() ) {
         throw SerialException( SerialException::ExcBinaryIncompatible );
     }
 
@@ -153,8 +150,7 @@ void parse( T& value, const ByteArray& bytes ) {
 template< typename T >
 uint64_t size( const T& value ) {
 
-    using detail::SerialType;
-    return SerialType< T >::size( value ) + sizeof( uint64_t );
+    return detail::SerialType< T >::size( value ) + sizeof( uint64_t );
 }
 
 /**
@@ -163,13 +159,11 @@ uint64_t size( const T& value ) {
 template< typename ByteArray = std::string >
 uint64_t hash( const ByteArray& bytes ) {
 
-    using detail::SerialType;
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-
     uint64_t hash;
+    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
     HashIteratorType hash_begin( bytes.begin() );
     HashIteratorType hash_end( bytes.end() );
-    SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
+    detail::SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
     return hash;
 }
 
@@ -179,8 +173,7 @@ uint64_t hash( const ByteArray& bytes ) {
 template< typename T >
 uint64_t ident() {
 
-    using detail::SerialMetatype;
-    return SerialMetatype< T >::hash().full();
+    return detail::serial_hash< T >();
 }
 
 /**
@@ -188,11 +181,9 @@ uint64_t ident() {
  */
 uint64_t ident( const std::string& alias ) {
 
-    using detail::HashFunctor;
-    uint64_t hash = -1;
-    HashFunctor functor{ hash, alias };
+    detail::HashFunctor functor{ uint64_t( -1 ), alias };
     search_serial( functor );
-    return hash;
+    return functor.hash;
 }
 
 /**
@@ -201,9 +192,7 @@ uint64_t ident( const std::string& alias ) {
 template< typename T >
 std::string alias() {
 
-    using detail::SerialMetatype;
-    using detail::SerialAlias;
-    return SerialAlias{ SerialMetatype< T >::alias() }.convert< std::string >();
+    return detail::serial_alias< T >();
 }
 
 /**
@@ -211,11 +200,9 @@ std::string alias() {
  */
 std::string alias( uint64_t ident ) {
 
-    using detail::AliasFunctor;
-    std::string alias;
-    AliasFunctor functor{ alias, ident };
+    detail::AliasFunctor functor{ {}, ident };
     search_serial( functor );
-    return alias;
+    return functor.alias;
 }
 
 } // --- namespace

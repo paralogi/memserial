@@ -55,7 +55,7 @@ struct SerialHash {
         return value >> 32;
     }
 
-    constexpr uint32_t body() {
+    constexpr uint32_t tail() {
         return value;
     }
 
@@ -146,7 +146,6 @@ template< typename T >
 struct SerialMetatype {
     static constexpr bool serial() { return false; }
     static constexpr SerialAlias alias() { return "undefined"; }
-    static constexpr SerialHash hash() { return 0; }
 
     template< SerialEndian endian, typename Iterator >
     static constexpr auto iterator( const Iterator& i ) {
@@ -156,10 +155,8 @@ struct SerialMetatype {
 
 template<>
 struct SerialMetatype< nulltype > {
-    using IdentityType = SerialIdentity< 0 >;
     static constexpr bool serial() { return true; }
     static constexpr SerialAlias alias() { return "nulltype"; }
-    static constexpr SerialHash hash() { return { alias().hash(), SERIAL_HASH_SALT }; }
 
     template< SerialEndian endian, typename Iterator >
     static constexpr auto iterator( const Iterator& i ) {
@@ -309,7 +306,6 @@ template<> \
 struct SerialMetatype< Type > { \
     static constexpr bool serial() { return true; } \
     static constexpr SerialAlias alias() { return UNPACK( Type ); } \
-    static constexpr SerialHash hash() { return { alias().hash(), SerialType< Type >::hash() }; } \
     \
     template< SerialEndian endian, typename Iterator > \
     static constexpr auto iterator( const Iterator& i ) { \

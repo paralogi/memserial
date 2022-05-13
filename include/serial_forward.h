@@ -69,6 +69,7 @@
 #include "detail/serial_timepoint.h"
 #include "detail/serial_duration.h"
 #include "detail/serial_complex.h"
+#include "detail/serial_ident.h"
 
 /**
  * \internal
@@ -104,6 +105,7 @@
  * Include SERIAL_REBIND_HEADER before defining serializable types.
  */
 #if !defined( SERIAL_REBIND_HEADER )
+#include "boost/pfr/core.hpp"
 #include "detail/serial_rebind.h"
 #define SERIAL_REBIND_HEADER "detail/serial_dummy.h"
 #endif

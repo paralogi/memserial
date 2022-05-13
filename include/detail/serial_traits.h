@@ -86,7 +86,7 @@ struct size_t_ : std::integral_constant< std::size_t, Index > {};
  *
  */
 template< SerialEndian endian, std::size_t size = 0 >
-struct endian_traits : std::false_type {
+struct endian_traits : std::true_type {
     static constexpr SerialEndian internal_endian = endian;
 };
 

@@ -17,7 +17,14 @@
 namespace memserial {
 namespace detail {
 
-extern const uint64_t reduced_hash_static = memserial::detail::reduced_hash();
-extern const std::vector< uint64_t > perfect_hash_static = memserial::detail::perfect_hash();
+template< typename T >
+static constexpr uint64_t serial_hash() {
+    return SerialHash{ SerialMetatype< T >::alias().hash(), SerialType< T >::hash() }.full();
+}
+
+template< typename T >
+static constexpr std::string serial_alias() {
+    return SerialAlias{ SerialMetatype< T >::alias() }.convert< std::string >();
+}
 
 }} // --- namespace

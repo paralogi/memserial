@@ -32,7 +32,7 @@ struct TraceFunctor {
     template< std::size_t Index >
     constexpr bool operator()( size_t_< Index > ) {
         using ValueType = typename SerialIdentity< Index >::ValueType;
-        if ( SerialMetatype< ValueType >::hash().full() != hash )
+        if ( serial_hash< ValueType >() != hash )
             return false;
         ValueType value{};
         auto serial_begin = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( begin );
@@ -51,8 +51,7 @@ struct TraceFunctor {
 template< typename T, typename Stream >
 void print( const T& value, Stream&& stream ) {
 
-    using detail::SerialType;
-    SerialType< T >::debug( value, stream, 0 );
+    detail::SerialType< T >::debug( value, stream, 0 );
 }
 
 /**
@@ -61,18 +60,15 @@ void print( const T& value, Stream&& stream ) {
 template< typename ByteArray, typename Stream >
 void trace( const ByteArray& bytes, Stream&& stream ) {
 
-    using detail::SerialType;
-    using detail::TraceFunctor;
-    using StreamType = typename std::remove_reference< Stream >::type;
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-
     try {
         uint64_t hash;
+        using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
         HashIteratorType hash_begin( bytes.begin() );
         HashIteratorType hash_end( bytes.end() );
-        SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
+        detail::SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
 
-        TraceFunctor< StreamType, ByteArray > functor{ stream, hash_begin, hash_end, hash };
+        using StreamType = typename std::remove_reference< Stream >::type;
+        detail::TraceFunctor< StreamType, ByteArray > functor{ stream, hash_begin, hash_end, hash };
         search_serial( functor );
     }
     catch ( const SerialException& ) {
