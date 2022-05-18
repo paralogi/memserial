@@ -55,28 +55,45 @@ struct SerialType< duration< Rep, Period >, std::true_type > {
     /**
      *
      */
+    static constexpr std::size_t size() {
+
+        return SerialType< DataType >::size();
+    }
+
+    /**
+     *
+     */
     static std::size_t size( const ValueType& value ) {
 
-        return SerialType< DataType >::size( value.count() );
+        return size();
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        SerialType< DataType >::bout( value.count(), begin, end );
+        begin += size();
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
+
+        SerialType< DataType >::bout( value.count(), begin );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
 
         DataType data;
-        SerialType< DataType >::bin( data, begin, end );
+        SerialType< DataType >::bin( data, begin );
         value = ValueType( data );
     }
 

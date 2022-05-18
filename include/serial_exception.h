@@ -27,8 +27,9 @@ namespace memserial {
 class SerialException : public std::exception {
 public:
     enum ExceptionCode {
-        ExcOutOfRange,
-        ExcTypeMissmatch,
+        ExcArrayOverflow,
+        ExcBufferOverflow,
+        ExcLayoutIncompatible,
         ExcBinaryIncompatible
     };
 
@@ -43,12 +44,14 @@ public:
 
     const char* what() const noexcept override {
         switch ( m_code ) {
-        case ExcOutOfRange:
-            return "buffer size is too small";
-        case ExcTypeMissmatch:
-            return "data type not matching";
+        case ExcArrayOverflow:
+            return "dynamic array size must be less than 2^32";
+        case ExcBufferOverflow:
+            return "data size of serialized buffer is too small to fit the type";
+        case ExcLayoutIncompatible:
+            return "data structure of serialized buffer does not match the type";
         case ExcBinaryIncompatible:
-            return "data type binary incompatible";
+            return "data type of serialized buffer is binary incompatible with the original type";
         default:
             return "unknown exception case";
         }

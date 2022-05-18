@@ -20,13 +20,11 @@ namespace detail {
 /**
  *
  */
-template< typename Stream, typename ByteArray >
+template< typename Stream, typename Iterator >
 struct TraceFunctor {
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-
     Stream& stream;
-    HashIteratorType& begin;
-    HashIteratorType& end;
+    Iterator& begin;
+    uint64_t size;
     uint64_t hash;
 
     template< std::size_t Index >
@@ -34,10 +32,16 @@ struct TraceFunctor {
         using ValueType = typename SerialIdentity< Index >::ValueType;
         if ( serial_hash< ValueType >() != hash )
             return false;
+        if ( SerialType< ValueType >::size() > size )
+            return true;
+        using IteratorType = typename Iterator::iterator;
+        constexpr auto serial_order = Iterator::order;
+        auto serial_begin_copy = SerialMetatype< ValueType >::template iterator< serial_order >( IteratorType( begin ) );
+        auto serial_begin = SerialMetatype< ValueType >::template iterator< serial_order >( IteratorType( begin ) );
+        auto serial_end = SerialMetatype< ValueType >::template iterator< serial_order >( IteratorType( begin + size ) );
         ValueType value{};
-        auto serial_begin = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( begin );
-        auto serial_end = SerialMetatype< ValueType >::template iterator< HashIteratorType::order >( end );
-        SerialType< ValueType >::bin( value, serial_begin, serial_end );
+        SerialType< ValueType >::init( value, serial_begin, serial_end );
+        SerialType< ValueType >::bin( value, serial_begin_copy );
         SerialType< ValueType >::debug( value, stream, 0 );
         return true;
     }
@@ -61,14 +65,18 @@ template< typename ByteArray, typename Stream >
 void trace( const ByteArray& bytes, Stream&& stream ) {
 
     try {
+        if ( detail::SerialType< uint64_t >::size() > bytes.size() )
+            return;
+
+        using IteratorType = detail::SerialIteratorConstAlias< ByteArray >;
+        IteratorType begin( bytes.begin() );
+
         uint64_t hash;
-        using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-        HashIteratorType hash_begin( bytes.begin() );
-        HashIteratorType hash_end( bytes.end() );
-        detail::SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
+        detail::SerialType< uint64_t >::bin( hash, begin );
 
         using StreamType = typename std::remove_reference< Stream >::type;
-        detail::TraceFunctor< StreamType, ByteArray > functor{ stream, hash_begin, hash_end, hash };
+        detail::TraceFunctor< StreamType, IteratorType > functor{ stream, begin,
+            bytes.size() - detail::SerialType< uint64_t >::size(), hash };
         search_serial( functor );
     }
     catch ( const SerialException& ) {

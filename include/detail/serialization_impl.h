@@ -89,17 +89,22 @@ ByteArray serialize( const T& value ) {
 template< typename ByteArray, typename T >
 void serialize( ByteArray& bytes, const T& value ) {
 
+    if ( size( value ) > bytes.size() )
+        throw SerialException( SerialException::ExcBufferOverflow );
+
     using detail::SerialMetatype;
     using detail::SerialType;
 
-    using HashIteratorType = detail::SerialIteratorAlias< ByteArray >;
-    HashIteratorType hash_begin( bytes.begin() );
-    HashIteratorType hash_end( bytes.end() );
-    SerialType< uint64_t >::bout( detail::serial_hash< T >(), hash_begin, hash_end );
+    using SerialIteratorType = detail::SerialIteratorAlias< ByteArray >;
+    SerialIteratorType begin( bytes.begin() );
 
-    auto serial_begin = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_begin );
-    auto serial_end = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_end );
-    SerialType< T >::bout( value, serial_begin, serial_end );
+    SerialType< uint64_t >::bout( detail::serial_hash< T >(), begin );
+
+    using IteratorType = typename SerialIteratorType::iterator;
+    constexpr auto serial_order = SerialIteratorType::order;
+    auto serial_begin = SerialMetatype< T >::template iterator< serial_order >( IteratorType( begin ) );
+
+    SerialType< T >::bout( value, serial_begin );
 }
 
 /**
@@ -119,29 +124,45 @@ T parse( const ByteArray& bytes ) {
 template< typename T, typename ByteArray = std::string >
 void parse( T& value, const ByteArray& bytes ) {
 
+    if ( size< T >() > bytes.size() )
+        throw SerialException( SerialException::ExcBufferOverflow );
+
     using detail::SerialMetatype;
     using detail::SerialType;
     using detail::SerialHash;
 
+    using SerialIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
+    SerialIteratorType begin( bytes.begin() );
+
     uint64_t hash;
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-    HashIteratorType hash_begin( bytes.begin() );
-    HashIteratorType hash_end( bytes.end() );
-    SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
+    SerialType< uint64_t >::bin( hash, begin );
 
     if ( SerialMetatype< T >::alias().hash() != SerialHash( hash ).head() ) {
         detail::MatchFunctor functor{ false, SerialType< T >::hash(), SerialHash( hash ).tail() };
         if ( !search_serial( functor ) || !functor.match_result )
-            throw SerialException( SerialException::ExcTypeMissmatch );
+            throw SerialException( SerialException::ExcLayoutIncompatible );
     }
 
-    else if ( SerialType< T >::hash() != SerialHash( hash ).tail() ) {
+    else if ( SerialType< T >::hash() != SerialHash( hash ).tail() )
         throw SerialException( SerialException::ExcBinaryIncompatible );
-    }
 
-    auto serial_begin = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_begin );
-    auto serial_end = SerialMetatype< T >::template iterator< HashIteratorType::order >( hash_end );
-    SerialType< T >::bin( value, serial_begin, serial_end );
+    using IteratorType = typename SerialIteratorType::iterator;
+    constexpr auto serial_order = SerialIteratorType::order;
+    auto serial_begin_copy = SerialMetatype< T >::template iterator< serial_order >( IteratorType( begin ) );
+    auto serial_begin = SerialMetatype< T >::template iterator< serial_order >( IteratorType( begin ) );
+    auto serial_end = SerialMetatype< T >::template iterator< serial_order >( IteratorType( bytes.end() ) );
+
+    SerialType< T >::init( value, serial_begin, serial_end );
+    SerialType< T >::bin( value, serial_begin_copy );
+}
+
+/**
+ *
+ */
+template< typename T >
+uint64_t size() {
+
+    return detail::SerialType< uint64_t >::size() + detail::SerialType< T >::size();
 }
 
 /**
@@ -150,7 +171,7 @@ void parse( T& value, const ByteArray& bytes ) {
 template< typename T >
 uint64_t size( const T& value ) {
 
-    return detail::SerialType< T >::size( value ) + sizeof( uint64_t );
+    return detail::SerialType< uint64_t >::size() + detail::SerialType< T >::size( value );
 }
 
 /**
@@ -159,11 +180,14 @@ uint64_t size( const T& value ) {
 template< typename ByteArray = std::string >
 uint64_t hash( const ByteArray& bytes ) {
 
+    if ( detail::SerialType< uint64_t >::size() > bytes.size() )
+        throw SerialException( SerialException::ExcBufferOverflow );
+
+    using SerialIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
+    SerialIteratorType begin( bytes.begin() );
+
     uint64_t hash;
-    using HashIteratorType = detail::SerialIteratorConstAlias< ByteArray >;
-    HashIteratorType hash_begin( bytes.begin() );
-    HashIteratorType hash_end( bytes.end() );
-    detail::SerialType< uint64_t >::bin( hash, hash_begin, hash_end );
+    detail::SerialType< uint64_t >::bin( hash, begin );
     return hash;
 }
 
@@ -228,6 +252,7 @@ template void parse< Type, SerialWrapper< ByteArray, LittleEndian > >( Type&, co
 template void parse< Type, SerialWrapper< ByteArray, NativeEndian > >( Type&, const SerialWrapper< ByteArray, NativeEndian >& );
 
 #define SERIAL_SIZE( Type ) \
+template uint64_t size< Type >(); \
 template uint64_t size< Type >( const Type& );
 
 #define SERIAL_HASH( ByteArray ) \

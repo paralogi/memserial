@@ -54,9 +54,18 @@ struct SerialType< vector< Args... >, is_primitive< typename vector< Args... >::
     /**
      *
      */
+    static constexpr std::size_t size() {
+
+        return sizeof( SizeType );
+    }
+
+    /**
+     *
+     */
     static std::size_t size( const ValueType& value ) {
 
-        assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
+        if ( value.size() > std::size_t( std::numeric_limits< SizeType >::max() ) )
+            throw SerialException( SerialException::ExcArrayOverflow );
 
         return sizeof( SizeType ) + sizeof( DataType ) * value.size();
     }
@@ -65,32 +74,36 @@ struct SerialType< vector< Args... >, is_primitive< typename vector< Args... >::
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
+        SizeType data_size;
+        begin.bin( data_size );
 
-        SizeType data_size = value.size();
-        begin.bout( data_size );
-        begin.bout( &value[ 0 ], data_size );
+        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
+            throw SerialException( SerialException::ExcBufferOverflow );
+
+        value.resize( data_size );
+        begin += sizeof( DataType ) * data_size;
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
 
-        if ( std::ptrdiff_t( sizeof( SizeType ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+        begin.bout( SizeType( value.size() ) );
+        begin.bout( &value[ 0 ], value.size() );
+    }
 
-        SizeType data_size;
-        begin.bin( data_size );
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
 
-        if ( std::ptrdiff_t( sizeof( DataType ) * data_size ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
-
-        value.resize( data_size );
-        begin.bin( &value[ 0 ], data_size );
+        begin += sizeof( SizeType );
+        begin.bin( &value[ 0 ], value.size() );
     }
 
     /**
@@ -155,9 +168,18 @@ struct SerialType< vector< Args... >, is_class< typename vector< Args... >::valu
     /**
      *
      */
+    static constexpr std::size_t size() {
+
+        return sizeof( SizeType );
+    }
+
+    /**
+     *
+     */
     static std::size_t size( const ValueType& value ) {
 
-        assert( value.size() < std::size_t( std::numeric_limits< SizeType >::max() ) );
+        if ( value.size() > std::size_t( std::numeric_limits< SizeType >::max() ) )
+            throw SerialException( SerialException::ExcArrayOverflow );
 
         std::size_t byte_size = sizeof( SizeType );
 
@@ -171,33 +193,45 @@ struct SerialType< vector< Args... >, is_class< typename vector< Args... >::valu
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( sizeof( SizeType ) ) <= std::distance( begin, end ) );
+        SizeType data_size;
+        begin.bin( data_size );
 
-        SizeType data_size = value.size();
-        begin.bout( data_size );
+        if ( std::ptrdiff_t( SerialType< DataType >::size() * data_size ) > std::distance( begin, end ) )
+            throw SerialException( SerialException::ExcBufferOverflow );
 
-        for ( const auto& data : value )
-            SerialType< DataType >::bout( data, begin, end );
+        Iterator least_end = end - SerialType< DataType >::size() * data_size;
+        value.resize( data_size );
+
+        for ( auto& data : value ) {
+            least_end += SerialType< DataType >::size();
+            SerialType< DataType >::init( data, begin, least_end );
+        }
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
 
-        if ( std::ptrdiff_t( sizeof( SizeType ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+        begin.bout( SizeType( value.size() ) );
 
-        SizeType data_size;
-        begin.bin( data_size );
+        for ( const auto& data : value )
+            SerialType< DataType >::bout( data, begin );
+    }
 
-        value.resize( data_size );
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
+
+        begin += sizeof( SizeType );
 
         for ( auto& data : value )
-            SerialType< DataType >::bin( data, begin, end );
+            SerialType< DataType >::bin( data, begin );
     }
 
     /**

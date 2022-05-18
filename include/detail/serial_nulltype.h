@@ -47,7 +47,15 @@ struct SerialType< nulltype, std::true_type > {
     /**
      *
      */
-    static std::size_t size( const ValueType& ) {
+    static constexpr std::size_t size() {
+
+        return 0;
+    }
+
+    /**
+     *
+     */
+    static std::size_t size( const ValueType& value ) {
 
         return 0;
     }
@@ -56,7 +64,7 @@ struct SerialType< nulltype, std::true_type > {
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
     }
 
@@ -64,7 +72,15 @@ struct SerialType< nulltype, std::true_type > {
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
+
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
 
     }
 

@@ -22,6 +22,7 @@ namespace detail {
  */
 template< SerialEndian endian, typename Iterator >
 struct SerialIterator : Iterator {
+    using iterator = Iterator;
     static constexpr SerialEndian order = endian;
 
     SerialIterator( const Iterator& iterator ) :

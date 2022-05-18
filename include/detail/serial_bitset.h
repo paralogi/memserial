@@ -51,7 +51,7 @@ struct SerialType< bitset< Bits >, std::true_type > {
     /**
      *
      */
-    static std::size_t size( const ValueType& value ) {
+    static constexpr std::size_t size() {
 
         constexpr auto bytes_count = Bits / CHAR_BIT + ( Bits % CHAR_BIT == 0 ? 0 : 1 );
         return bytes_count;
@@ -60,30 +60,42 @@ struct SerialType< bitset< Bits >, std::true_type > {
     /**
      *
      */
-    template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static std::size_t size( const ValueType& value ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
-
-        for ( std::size_t index = 0; index < Bits; ++index )
-            begin[ index / CHAR_BIT ] |= ( value[ index ] << ( index % CHAR_BIT ) );
-
-        begin += size( value );
+        return size();
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+        begin += size();
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bout( const ValueType& value, Iterator& begin ) {
+
+        for ( std::size_t index = 0; index < Bits; ++index )
+            begin[ index / CHAR_BIT ] |= ( value[ index ] << ( index % CHAR_BIT ) );
+
+        begin += size();
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
 
         for ( std::size_t index = 0; index < Bits; ++index )
             value[ index ] = ( ( begin[ index / CHAR_BIT ] >> ( index % CHAR_BIT ) ) & 1 );
 
-        begin += size( value );
+        begin += size();
     }
 
     /**

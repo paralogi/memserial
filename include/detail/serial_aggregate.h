@@ -65,23 +65,31 @@ struct SerialType< T, is_serial< T > > {
     /**
      *
      */
+    static constexpr std::size_t size() {
+
+        ConstFunctor functor{ 0 };
+        foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
+        return functor.size;
+    }
+
+    /**
+     *
+     */
     static std::size_t size( const ValueType& value ) {
 
-        std::size_t byte_size = 0;
-
-        SizeFunctor functor{ const_cast< ValueType& >( value ), byte_size };
+        SizeFunctor functor{ const_cast< ValueType& >( value ), 0 };
         foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
-
-        return byte_size;
+        return functor.size;
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        BoutFunctor< Iterator > functor{ const_cast< ValueType& >( value ), begin, end };
+        Iterator least_end = end - size();
+        InitFunctor< Iterator > functor{ value, begin, least_end };
         foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
     }
 
@@ -89,9 +97,19 @@ struct SerialType< T, is_serial< T > > {
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
 
-        BinFunctor< Iterator > functor{ value, begin, end };
+        BoutFunctor< Iterator > functor{ const_cast< ValueType& >( value ), begin };
+        foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
+
+        BinFunctor< Iterator > functor{ value, begin };
         foreach_sequence( functor, size_t_< 0 >{}, size_t_< tuple_size >{} );
     }
 
@@ -146,13 +164,41 @@ struct SerialType< T, is_serial< T > > {
     /**
      *
      */
-    struct SizeFunctor {
-        ValueType& value;
-        std::size_t& byte_size;
+    struct ConstFunctor {
+        std::size_t size;
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            byte_size += SerialType< FieldType< Index > >::size( tuple_field< Index >::get( value ) );
+            size += SerialType< FieldType< Index > >::size();
+        }
+    };
+
+    /**
+     *
+     */
+    struct SizeFunctor {
+        ValueType& value;
+        std::size_t size;
+
+        template< std::size_t Index >
+        constexpr void operator()( size_t_< Index > ) {
+            size += SerialType< FieldType< Index > >::size( tuple_field< Index >::get( value ) );
+        }
+    };
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    struct InitFunctor {
+        ValueType& value;
+        Iterator& begin;
+        Iterator& end;
+
+        template< std::size_t Index >
+        constexpr void operator()( size_t_< Index > ) {
+            end += SerialType< FieldType< Index > >::size();
+            SerialType< FieldType< Index > >::init( tuple_field< Index >::get( value ), begin, end );
         }
     };
 
@@ -163,11 +209,10 @@ struct SerialType< T, is_serial< T > > {
     struct BoutFunctor {
         ValueType& value;
         Iterator& begin;
-        Iterator& end;
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::bout( tuple_field< Index >::get( value ), begin, end );
+            SerialType< FieldType< Index > >::bout( tuple_field< Index >::get( value ), begin );
         }
     };
 
@@ -178,11 +223,10 @@ struct SerialType< T, is_serial< T > > {
     struct BinFunctor {
         ValueType& value;
         Iterator& begin;
-        Iterator& end;
 
         template< std::size_t Index >
         constexpr void operator()( size_t_< Index > ) {
-            SerialType< FieldType< Index > >::bin( tuple_field< Index >::get( value ), begin, end );
+            SerialType< FieldType< Index > >::bin( tuple_field< Index >::get( value ), begin );
         }
     };
 

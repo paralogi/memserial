@@ -52,7 +52,7 @@ struct SerialType< complex< Arg >, is_primitive< typename complex< Arg >::value_
     /**
      *
      */
-    static std::size_t size( const ValueType& value ) {
+    static constexpr std::size_t size() {
 
         return sizeof( DataType ) * 2;
     }
@@ -60,10 +60,25 @@ struct SerialType< complex< Arg >, is_primitive< typename complex< Arg >::value_
     /**
      *
      */
-    template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static std::size_t size( const ValueType& value ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
+        return size();
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
+
+        begin += size();
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bout( const ValueType& value, Iterator& begin ) {
 
         DataType real_part = value.real();
         begin.bout( real_part );
@@ -76,10 +91,7 @@ struct SerialType< complex< Arg >, is_primitive< typename complex< Arg >::value_
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
-
-        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+    static void bin( ValueType& value, Iterator& begin ) {
 
         DataType real_part;
         begin.bin( real_part );

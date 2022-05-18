@@ -23,7 +23,10 @@ namespace detail {
 template< typename Arg, std::size_t Dim >
 struct SerialType< array< Arg, Dim >, is_primitive< typename array< Arg, Dim >::value_type > > {
     using ValueType = array< Arg, Dim >;
+    using SizeType = uint32_t;
     using DataType = typename ValueType::value_type;
+
+    static_assert( Dim <= std::size_t( std::numeric_limits< SizeType >::max() ) );
 
     /**
      *
@@ -57,32 +60,44 @@ struct SerialType< array< Arg, Dim >, is_primitive< typename array< Arg, Dim >::
     /**
      *
      */
+    static constexpr std::size_t size() {
+
+        return sizeof( DataType ) * Dim;
+    }
+
+    /**
+     *
+     */
     static std::size_t size( const ValueType& value ) {
 
-        return sizeof( DataType ) * value.size();
+        return size();
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        assert( std::ptrdiff_t( size( value ) ) <= std::distance( begin, end ) );
-
-        begin.bout( &value[ 0 ], value.size() );
+        begin += size();
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
 
-        if ( std::ptrdiff_t( size( value ) ) > std::distance( begin, end ) )
-            throw SerialException( SerialException::ExcOutOfRange );
+        begin.bout( &value[ 0 ], Dim );
+    }
 
-        begin.bin( &value[ 0 ], value.size() );
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
+
+        begin.bin( &value[ 0 ], Dim );
     }
 
     /**
@@ -93,16 +108,16 @@ struct SerialType< array< Arg, Dim >, is_primitive< typename array< Arg, Dim >::
 
         stream << SerialMetatype< ValueType >::alias().data <<
                 "< " << SerialMetatype< DataType >::alias().data <<
-                ", " << value.size() << " >: ";
+                ", " << Dim << " >: ";
 
-        if ( value.size() == 0 ) {
+        if ( Dim == 0 ) {
             stream << "empty";
             return;
         }
 
         std::string separator( ", " );
 
-        for ( std::size_t index = 0; index < value.size(); ++index ) {
+        for ( std::size_t index = 0; index < Dim; ++index ) {
             if ( index > 0 )
                 stream << separator.c_str();
             SerialType< DataType >::debug( value[ index ], stream, level + 1 );
@@ -116,7 +131,10 @@ struct SerialType< array< Arg, Dim >, is_primitive< typename array< Arg, Dim >::
 template< typename Arg, std::size_t Dim >
 struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::value_type > > {
     using ValueType = array< Arg, Dim >;
+    using SizeType = uint32_t;
     using DataType = typename ValueType::value_type;
+
+    static_assert( Dim <= std::size_t( std::numeric_limits< SizeType >::max() ) );
 
     /**
      *
@@ -145,6 +163,14 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
 
         for ( std::size_t index = 0; index < Dim; ++index )
             SerialType< DataType >::hash( value, nesting );
+    }
+
+    /**
+     *
+     */
+    static constexpr std::size_t size() {
+
+        return SerialType< DataType >::size() * Dim;
     }
 
     /**
@@ -164,20 +190,34 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
      *
      */
     template< typename Iterator >
-    static void bout( const ValueType& value, Iterator& begin, Iterator& end ) {
+    static void init( ValueType& value, Iterator& begin, Iterator& end ) {
 
-        for ( const auto& data : value )
-            SerialType< DataType >::bout( data, begin, end );
+        Iterator least_end = end - size();
+
+        for ( auto& data : value ) {
+            least_end += SerialType< DataType >::size();
+            SerialType< DataType >::init( data, begin, least_end );
+        }
     }
 
     /**
      *
      */
     template< typename Iterator >
-    static void bin( ValueType& value, Iterator& begin, Iterator& end ) {
+    static void bout( const ValueType& value, Iterator& begin ) {
+
+        for ( const auto& data : value )
+            SerialType< DataType >::bout( data, begin );
+    }
+
+    /**
+     *
+     */
+    template< typename Iterator >
+    static void bin( ValueType& value, Iterator& begin ) {
 
         for ( auto& data : value )
-            SerialType< DataType >::bin( data, begin, end );
+            SerialType< DataType >::bin( data, begin );
     }
 
     /**
@@ -188,9 +228,9 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
 
         stream << SerialMetatype< ValueType >::alias().data <<
                 "< " << SerialMetatype< DataType >::alias().data <<
-                ", " << value.size() << " >: ";
+                ", " << Dim << " >: ";
 
-        if ( value.size() == 0 ) {
+        if ( Dim == 0 ) {
             stream << "empty";
             return;
         }
@@ -198,7 +238,7 @@ struct SerialType< array< Arg, Dim >, is_class< typename array< Arg, Dim >::valu
         std::string separator( 3 * ( level + 1 ) + 1, ' ' );
         separator[ 0 ] = '\n';
 
-        for ( std::size_t index = 0; index < value.size(); ++index ) {
+        for ( std::size_t index = 0; index < Dim; ++index ) {
             stream << separator.c_str() << index << ": ";
             SerialType< DataType >::debug( value[ index ], stream, level + 1 );
         }

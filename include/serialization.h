@@ -76,6 +76,17 @@ void parse( T& value, const ByteArray& bytes );
 
 /**
  * \~english
+ * \brief Returns least size of the serialized data.
+ * \return Bytes count.
+ * \~russian
+ * \brief Возвращает наименьший размер сериализованных данных.
+ * \return Количество байт.
+ */
+template< typename T >
+uint64_t size();
+
+/**
+ * \~english
  * \brief Returns real size of the serialized data.
  * \param value Data structure.
  * \return Bytes count.
