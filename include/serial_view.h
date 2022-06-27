@@ -67,7 +67,7 @@ public:
 
     SerialView( const SerialView& data ) :
             m_alloc( static_cast< char* >( operator new( data.m_size ) ) ),
-            m_data( data.m_data ),
+            m_data( m_alloc ),
             m_size( data.m_size ) {
         std::memcpy( m_alloc, data.m_alloc, m_size );
     }
@@ -77,6 +77,8 @@ public:
             m_data( data.m_data ),
             m_size( data.m_size ) {
         data.m_alloc = nullptr;
+        data.m_data = nullptr;
+        data.m_size = 0;
     }
 
     ~SerialView() {
